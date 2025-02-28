@@ -169,7 +169,7 @@ def loop():
 def main():
   print("% Starting")
   # where is the MQTT data server:
-  service.setup('10.197.216.185') # localhost
+  service.setup('localhost') # localhost
   #service.setup('10.197.217.81') # Juniper
   #service.setup('10.197.217.80') # Newton
   #service.setup('10.197.218.172')
