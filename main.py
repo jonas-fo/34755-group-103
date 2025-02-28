@@ -99,13 +99,13 @@ def loop():
         service.send(service.topicCmd + "T0/leds","16 0 0 30") # blue: running
         service.send(service.topicCmd + "ti/rc","0.0 0.0") # (forward m/s, turnrate rad/sec)
         # follow line (at 0.25cm/s)
-        edge.lineControl(0.25, 0.0) # m/s and position on line -2.0..2.0
+        edge.lineControl(0.25, -1.0) # m/s and position on line -2.0..2.0
         state = 12 #RightSide_follow(0.25,10) # until no more line
         pose.tripBreset() # use trip counter/timer B
     elif state == 12: # following line
       if edge.lineValidCnt == 0 or pose.tripBtimePassed() > 10:
         # no more line
-        #edge.lineControl(0,0) # stop following line
+        edge.lineControl(0,0) # stop following line
         pose.tripBreset()
         service.send(service.topicCmd + "ti/rc","-0.1 0.5") # turn left
         state = 14 # turn left
