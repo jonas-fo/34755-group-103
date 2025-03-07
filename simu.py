@@ -55,6 +55,19 @@ class SImu:
           break
         pass
         loops += 1
+      # should we calibrate the gyro
+      if service.args.gyro:
+        print("% Starting calibrate gyro offset.")
+        # ask Teensy to calibrate
+        service.send("robobot/cmd/T0/gyroc", "")
+        # wait for calibration to finish (average over 1s)
+        t.sleep(2.5)
+        # save calibrated values
+        service.send("robobot/cmd/T0/eew", "")
+        print("% Starting calibrate gyro offset finished.")
+        t.sleep(0.5)
+        # all done
+        service.stop = True
       pass
 
     def print(self):

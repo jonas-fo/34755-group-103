@@ -61,6 +61,14 @@ class SPose:
     poseCnt = 0
     poseInterval = 1000 # sec
 
+    def velocity(self):
+      # meters per second
+      return (self.wheelVelocity[0] + self.wheelVelocity[1])/2
+
+    def turnrate(self):
+      # radians per second
+      return (self.wheelVelocity[0] - self.wheelVelocity[1])/self.wheelBase
+
     def setup(self):
       from uservice import service
       loops = 0
@@ -73,19 +81,19 @@ class SPose:
         # wheel configuration info
         if self.infoCnt == 0 and False:
           # get configuration (once)
-          service.send(service.topicCmd + "T0/confi","")
+          service.send("robobot/cmd/T0/confi","")
           pass
         elif not configured:
           # reset pose
-          service.send(service.topicCmd + "T0/enc0","")
+          service.send("robobot/cmd/T0/enc0","")
           ## send robot configuration
           # confw rl rr g t wb Set configuration 
           #     radius (left,right (m)), gear, encTick, wheelbase (m)
-          service.send(service.topicCmd + "T0/confw","0.075 0.075 19 68 0.23")
-          # encoder reversed
-          service.send(service.topicCmd + "T0/encrev","1")
+          service.send("robobot/cmd/T0/confw","0.074 0.074 19 92 0.23")
+          # encoder reversed (motortest only)
+          # service.send("robobot/cmd/T0/encrev","1")
           # request new configuration from Teensy
-          service.send(service.topicCmd + "T0/confi","")
+          service.send("robobot/cmd/T0/confi","")
           # wait for new config message
           # self.infoCnt = 0
           configured = True
@@ -135,7 +143,8 @@ class SPose:
       print(f"%    - Encoder tick per rev: {self.tickPerRev}")
       print(f"%    - Gearing: {self.gear}:1")
       print(f"%    - Wheel base: {self.wheelBase} m")
-      print(f"%    - Encoder reversed: {self.encoder_reversed} (1 = reversed)")
+      # reversed is for motortest only
+      # print(f"%    - Encoder reversed: {self.encoder_reversed} (1 = reversed)")
 
     def tripAreset(self):
       self.tripA = 0
@@ -200,9 +209,9 @@ class SPose:
             # heading
             h = float(gg[4])
             dh = h - self.pose[2]
-            if (dh > 2.0 * np.pi):
+            if (dh > np.pi):
               dh -= 2.0 * np.pi
-            elif (dh < -2.0 * np.pi):
+            elif (dh < -np.pi):
               dh += 2.0 * np.pi
             self.tripBh += dh
             self.tripAh += dh

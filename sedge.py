@@ -64,7 +64,7 @@ class SEdge:
     #
     # follow line controller
     lineCtrl = False # private
-    # try with a P-controller
+    # try with a P-Lead controller
     lineKp = 3.0
     lineTauZ = 0.8
     lineTauP = 0.15
@@ -110,7 +110,7 @@ class SEdge:
             service.send(service.topicCmd + "T0/livi"," ")
             pass
           elif not self.sendCalibRequest:
-            # send calibration request, averaged over 30 samples
+            # send calibration request, averaged over 100 samples
             service.send(service.topicCmd + "T0/liwi","")
             t.sleep(0.02)
             service.send(service.topicCmd + "T0/licw","100")

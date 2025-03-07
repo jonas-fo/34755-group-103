@@ -49,7 +49,9 @@ class SRobot:
           break
         loops += 1
         if loops > 30:
-          print(f"% Robot (srobot.py) got no HBT data after {loops} loops (continues).")
+          print(f"% Robot (srobot.py) got no HBT data after {loops} loops (stops).")
+          print("% Is teensy_interface running?")
+          service.stop = True
           break
         pass
       pass
@@ -95,6 +97,11 @@ class SRobot:
             # print(f"% Got dname length {len(gg)} is: {msg}")
             pass
         elif topic == "T0/current":
+          gg = msg.split(" ")
+          if (len(gg) >= 4):
+            # not decoded yet
+            pass
+        elif topic == "T0/mca": # also current
           gg = msg.split(" ")
           if (len(gg) >= 4):
             # not decoded yet

@@ -59,6 +59,7 @@ class UService:
   stop = False
   th = {} # thread for incoming
   th2 = {} # thread for outgoing
+  thAlive = {} # thread for sending alive messages
   sendCnt = 0
   gotCnt = 0
   gotOutCnt = 0 # should continue to be 0
@@ -78,18 +79,17 @@ class UService:
     self.parser.add_argument('-g', '--gyro', action='store_true',
                 help='Calibrate gyro')
     self.parser.add_argument('-l', '--level', action='store_true',
-                help='Calibrate horizontal')
+                help='Calibrate horizontal (not implemented, but maybe an idea)')
     self.parser.add_argument('-s', '--silent', action='store_true',
                 help='Print less to console')
     self.parser.add_argument('-n', '--now', action='store_true',
-                help='Start drive now (do not wait for start button)')
+                help='Start drive now (do not wait for the start button)')
+    self.parser.add_argument('-m', '--meter', action='store_true',
+                help='Drive 1 m and stop')
+    self.parser.add_argument('-p', '--pi', action='store_true',
+                help='Turn 180 degrees (Pi) and stop')
     self.args = self.parser.parse_args()
     # print(f"% command line arguments: white {self.args.white}, gyro={self.args.gyro}, level={self.args.level}")
-    if self.args.gyro:
-      print(f"% Command line argument '--gyro'={self.args.gyro} not implemented")
-    if self.args.level:
-      print(f"% Command line argument '--level'={self.args.level} not implemented")
-    print(f"% Command line argument '--silent'={self.args.silent}")
     # allow close down on ctrl-C
     signal.signal(signal.SIGINT, signal_handler)
     self.connect_mqtt()
@@ -98,6 +98,8 @@ class UService:
     self.th.start()
     self.th2 = Thread(target=service.runOut);
     self.th2.start()
+    self.thAlive = Thread(target=service.runAlive);
+    self.thAlive.start()
     self.wait4mqttConnection()
     # do the setup and check of data streams
     # enable interface logging (into teensy_interface/build/log_2025...)
@@ -110,6 +112,11 @@ class UService:
     cam.setup()
     edge.setup()
     print(f"% (uservice.py) Setup finished with connected={self.connected}")
+    if self.args.level:
+      print(f"% Command line argument '--level'={self.args.level} but not implemented")
+      self.stop = True
+    if self.args.silent:
+      print(f"% Command line argument '--silent'={self.args.silent}")
 
   def run(self):
     # print("% MQTT service - thread running")
@@ -126,6 +133,15 @@ class UService:
     while not self.stop:
       self.clientOut.loop()
     print("% Service - thread stopped")
+
+  def runAlive(self):
+    while not self.stop:
+      # tell interface that we are alive
+      service.send(service.topicCmd + "ti/alive",str(service.startTime))
+      # print(f"% sent Alive {datetime.now()}")
+      t.sleep(0.5)
+    pass
+
 
   def on_connect(self, client, userdata, flags, rc):
     if rc == 0:
@@ -269,7 +285,11 @@ class UService:
     try:
       self.th2.join()
     except:
-      print("% Service thread not running")
+      print("% Service thread 2 not running")
+    try:
+      self.thAlive.join()
+    except:
+      print("% Service thread Alive not running")
     imu.terminate()
     robot.terminate()
     pose.terminate()

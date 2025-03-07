@@ -63,9 +63,9 @@ class SIr:
     def decode(self, topic, msg):
         # decode MQTT message
         used = True
-        if topic == "T0/dist":
+        if topic == "T0/ir" or topic == "T0/ird":
           gg = msg.split(" ")
-          if (len(gg) >= 4):
+          if (len(gg) >= 3):
             t0 = self.irTime;
             self.irTime = datetime.fromtimestamp(float(gg[0]))
             self.ir[0] = float(gg[1])
@@ -76,7 +76,7 @@ class SIr:
             else:
               self.irInterval = (self.irInterval * 99 + (t1 -t0).total_seconds()) / 100
             self.irUpdCnt += 1
-            self.print()
+            # self.print()
         else:
           used = False
         return used
