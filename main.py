@@ -164,7 +164,7 @@ def loop():
     elif state == 12: # following line
       imu.print()
       #imu.decode("")
-      if edge.lineValidCnt == 0 or imu.gyro[1] > 2:
+      if edge.lineValidCnt == 0 or pose.tripBtime() < 30:
         # no more line
         edge.lineControl(0,0) # stop following line
         pose.tripBreset()
