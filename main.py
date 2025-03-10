@@ -1,4 +1,4 @@
-from group_103 import main
+#from group_103 import main
 
 #/***************************************************************************
 #*   Copyright (C) 2024 by DTU
