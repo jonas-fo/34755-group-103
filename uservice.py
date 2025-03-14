@@ -88,6 +88,8 @@ class UService:
                 help='Drive 1 m and stop')
     self.parser.add_argument('-p', '--pi', action='store_true',
                 help='Turn 180 degrees (Pi) and stop')
+    self.parser.add_argument('-a', '--action',
+                help='Which state to start in')
     self.args = self.parser.parse_args()
     # print(f"% command line arguments: white {self.args.white}, gyro={self.args.gyro}, level={self.args.level}")
     # allow close down on ctrl-C
@@ -298,6 +300,7 @@ class UService:
     cam.terminate()
     gpio.terminate()
     flog.terminate()
+    self.connected=False
 
 # create the service object
 service = UService()

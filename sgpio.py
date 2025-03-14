@@ -105,7 +105,7 @@ class SGpio:
           print("% GPIO all ok")
           while self.gpio13.get_value() == 1:
             t.sleep(0.05)
-            print(f"% wait for key release {allOkcnt}")
+            print(f"% wait for key release {allOKcnt}")
             allOKcnt += 1
       pass
 

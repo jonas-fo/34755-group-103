@@ -41,7 +41,7 @@ from sgpio import gpio
 from scam import cam
 from uservice import service
 from simu import imu
-import Seesaw
+#import Seesaw
 
 
 # set title of process, so that it is not just called Python
@@ -136,7 +136,8 @@ def driveTurnPi():
 
 def loop():
   from ulog import flog
-  state = 0
+  state = 0 if service.args.action == None else service.args.action
+  print("Initial state = ", state)
   images = 0
   ledon = True
   tripTime = datetime.now()
@@ -158,17 +159,41 @@ def loop():
         service.send(service.topicCmd + "T0/leds","16 0 0 30") # blue: running
         service.send(service.topicCmd + "ti/rc","0.0 0.0") # (forward m/s, turn-rate rad/sec)
         # follow line (at 0.25cm/s)
-        edge.lineControl(0.25, -0.5) # m/s and position on line -2.0..2.0
+        edge.lineControl(0.20, -0.5) # m/s and position on line -2.0..2.0
         state = 12 # until no more line
         pose.tripBreset() # use trip counter/timer B
     elif state == 12: # following line
-      imu.print()
+      #imu.print()
       #imu.decode("")
-      if edge.lineValidCnt == 0 or pose.tripBtime() < 30:
+      if edge.lineValidCnt == 0 or pose.tripBtimePassed() > 15:
+        edge.lineControl(0.20, 0.5) # m/s and position on line -2.0..2.0
+        pose.tripBreset() # use trip counter/timer B
+        state = 15
+    elif state==15:
+      edge.lineControl(0.20, 0.5)
+      print("crossing cnt: ",edge.crossingLineCnt)
+      print("Line cnt: ",edge.lineValidCnt)
+      if edge.crossingLineCnt > 0:
+        print("Crossed line")
+        edge.lineControl(0, 0)
+        service.send(service.topicCmd + "ti/rc","-0.1 0.0")
+        state = 16
+        pose.tripBreset()
+      elif edge.lineValidCnt == 0:
+        state = 14
+    elif state==16:
+      if pose.tripBtimePassed() > 1:
+        service.send(service.topicCmd + "ti/rc","0.1 0.5")
+        if pose.tripBh > np.pi/4:# or pose.tripBtimePassed() > 10:
+          service.send(service.topicCmd + "ti/rc","0 0")
+          edge.lineControl(0.20,0.5)
+          state = 15
+          pose.tripBreset()
+      if edge.lineValidCnt == 0 or pose.tripBtimePassed() > 5:
         # no more line
         edge.lineControl(0,0) # stop following line
         pose.tripBreset()
-        service.send(service.topicCmd + "ti/rc","0.1 0.5") # turn left
+        #service.send(service.topicCmd + "ti/rc","0.1 0.5") # turn left
         state = 14 # turn left
     elif state == 14: # turning left
       if pose.tripBh > np.pi/2 or pose.tripBtimePassed() > 10:
