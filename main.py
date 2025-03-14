@@ -32,15 +32,15 @@ import cv2 as cv
 from datetime import *
 from setproctitle import setproctitle
 # robot function
-from spose import pose
-from sir import ir
-from srobot import robot
-from scam import cam
-from sedge import edge
-from sgpio import gpio
-from scam import cam
-from uservice import service
-from simu import imu
+from group_103.spose import pose
+from group_103.sir import ir
+from group_103.srobot import robot
+from group_103.scam import cam
+from group_103.sedge import edge
+from group_103.sgpio import gpio
+from group_103.scam import cam
+from group_103.uservice import service
+from group_103.simu import imu
 #import Seesaw
 
 
