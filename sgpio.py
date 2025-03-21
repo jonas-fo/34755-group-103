@@ -33,7 +33,7 @@ class SGpio:
     onPi = False
     gpio06 = False
     gpio12 = False
-    gpio13 = False
+    # gpio13 = False
     gpio16 = False
     gpio19 = False
     gpio20 = False
@@ -47,12 +47,12 @@ class SGpio:
         self.chip = gpiod.Chip('gpiochip4')
         self.onPi = True
       except:
-        print("% No GPIO (not a Pi ?) - continue without GPIO support")
+        print("% No GPIO (not on a Pi?) - continue without GPIO support")
         pass
       if self.onPi:
         self.gpio06 = self.chip.get_line(6)
         self.gpio12 = self.chip.get_line(12)
-        self.gpio13 = self.chip.get_line(13)
+        # self.gpio13 = self.chip.get_line(13)
         self.gpio16 = self.chip.get_line(16)
         self.gpio19 = self.chip.get_line(19)
         self.gpio20 = self.chip.get_line(20)
@@ -63,9 +63,9 @@ class SGpio:
         allOKcnt = 0;
         while not allOK or allOKcnt > 3:
           try: # reserve all used pins
-            self.gpio13.request(consumer="robobot", # start button
-                                type  = gpiod.LINE_REQ_DIR_IN,
-                                flags = gpiod.LINE_REQ_FLAG_BIAS_PULL_DOWN)
+            # self.gpio13.request(consumer="robobot", # start button
+            #                     type  = gpiod.LINE_REQ_DIR_IN,
+            #                     flags = gpiod.LINE_REQ_FLAG_BIAS_PULL_DOWN)
             self.gpio06.request(consumer="robobot", # stop button
                                 type  = gpiod.LINE_REQ_DIR_IN,
                                 flags = gpiod.LINE_REQ_FLAG_BIAS_PULL_DOWN)
@@ -91,40 +91,40 @@ class SGpio:
             print("% GPIO request for some pins failed");
         if not allOK:
           # reserve buttons failed
-          print("% GPIO pin reservation failed - another app is running already?")
+          print("% GPIO pin reservation failed - another app has reserved the pin?")
           self.gpio06.release()
           self.gpio12.release()
-          self.gpio13.release()
+          # self.gpio13.release()
           self.gpio16.release()
           self.gpio19.release()
           self.gpio20.release()
           self.gpio21.release()
           self.gpio26.release()
           onPi = False
-        else:
-          print("% GPIO all ok")
-          while self.gpio13.get_value() == 1:
-            t.sleep(0.05)
-            print(f"% wait for key release {allOKcnt}")
-            allOKcnt += 1
+        # else:
+        #   print("% GPIO all ok")
+        #   while self.gpio13.get_value() == 1:
+        #     t.sleep(0.05)
+        #     print(f"% wait for key release {allOkcnt}")
+        #     allOKcnt += 1
       pass
 
-    def start(self):
-      if self.onPi:
-        # print(f"Button 13 returns {self.gpio13.get_value()}")
-        v = self.gpio13.get_value()
-        if (v == 1):
-          print(f"% Button/pin 13 (start) is pressed")
-        return v == 1
-      else:
-        return False
+    # def start(self):
+    #   if self.onPi:
+    #     # print(f"Button 13 returns {self.gpio13.get_value()}")
+    #     v = self.gpio13.get_value()
+    #     if (v == 1):
+    #       print(f"% Button/pin 13 (start) is pressed")
+    #     return v == 1
+    #   else:
+    #     return False
 
-    def stop(self):
+    def test_stop_button(self):
       if self.onPi:
         # print(f"Button 06 returns {self.gpio06.get_value()}")
         v = self.gpio06.get_value()
         if (v == 1):
-          print(f"% Button/pin 6 (stop) is pressed")
+          print("% Button/pin 6 (stop) is pressed")
         return v == 1
       else:
         return False

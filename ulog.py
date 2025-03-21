@@ -30,25 +30,31 @@ class ULog:
   f = open('logfile.txt', 'w', encoding="utf-8")
 
   def setup(self):
+    from sedge import edge
     self.f.write("% logfile for Python side\n")
     self.f.write("% 1 time (sec)\n")
     self.f.write("% 2 Mission state\n")
     self.f.write("% 3,4,5 (x,y,h) (m,m,rad)\n")
     self.f.write("% 6 Camera frame count\n")
-    self.f.write("% 7 Line sensor line position\n")
-    self.f.write("% 8,9 trip A (distance and heading change)\n")
-    self.f.write("% 10,11 trip B (distance and heading change)\n")
+    self.f.write("% 7-9 Line sensor: line position, e*kp, control y (rad/s), validCnt\n")
+    self.f.write(f"%     Line sensor: Kp={edge.lineKp}, tau_z={edge.lineTauZ}s, tau_p={edge.lineTauP}s\n")
+    self.f.write("% 10,11 trip A (distance and heading change)\n")
+    self.f.write("% 12,13 trip B (distance and heading change)\n")
     pass
 
   def writeRemark(self, remark = "remark"):
-    lt = t.time()
-    # timestamp and remark preceded by a MATLAB comment character
-    self.f.write(f"% {lt} {remark}\n")
+    from uservice import service
+    if not service.stop:
+      lt = t.time()
+      # timestamp and remark preceded by a MATLAB comment character
+      self.f.write(f"% {lt} {remark}\n")
 
   def writeDataString(self, data = "remark"):
-    lt = t.time()
-    # timestamp and remark preceded by a MATLAB comment character
-    self.f.write(f"{lt} {data}\n")
+    from uservice import service
+    if not service.stop:
+      lt = t.time()
+      # timestamp and remark preceded by a MATLAB comment character
+      self.f.write(f"{lt} {data}\n")
 
   def write(self, state = -1):
     from spose import pose
@@ -58,22 +64,24 @@ class ULog:
     from sedge import edge
     from sgpio import gpio
     from scam import cam
-    lt = t.time()
-    if state >= 0:
-      #
-      self.st = state
-    # timestamp      
-    self.f.write(f"{lt} {self.st} ")
-    # pose (x, y, h)
-    self.f.write(f"{pose.pose[0]:.3f} {pose.pose[1]:.3f} {pose.pose[2]:.3f} ")
-    # camera image number
-    self.f.write(f"{cam.cnt} ")
-    # line sensor detected position
-    self.f.write(f"{edge.position:.2f} ")
-    # trip A distance and heading change
-    self.f.write(f"{pose.tripA:.3f} {pose.tripAh:.3f} ")
-    # trip B distance and heading change
-    self.f.write(f"{pose.tripB:.4f} {pose.tripBh:.4f}\n")
+    from uservice import service
+    if not service.stop:
+      lt = t.time()
+      if state >= 0:
+        #
+        self.st = state
+      # timestamp
+      self.f.write(f"{lt} {self.st} ")
+      # pose (x, y, h)
+      self.f.write(f"{pose.pose[0]:.3f} {pose.pose[1]:.3f} {pose.pose[2]:.3f} ")
+      # camera image number
+      self.f.write(f"{cam.cnt} ")
+      # line sensor detected position
+      self.f.write(f"{edge.position:.2f} {edge.u:.3f} {edge.lineY:.3f} {edge.lineValidCnt} ")
+      # trip A distance and heading change
+      self.f.write(f"{pose.tripA:.3f} {pose.tripAh:.3f} ")
+      # trip B distance and heading change
+      self.f.write(f"{pose.tripB:.4f} {pose.tripBh:.4f}\n")
 
   def terminate(self):
     self.f.close()
