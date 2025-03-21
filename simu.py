@@ -40,6 +40,8 @@ class SImu:
     def setup(self):
       # data subscription is set in teensy_interface/build/robot.ini
       from uservice import service
+      service.send(service.topicCmd+"T0/sub","gyro 15")
+      service.send(service.topicCmd+"T0/sub","acc 15")
       loops = 0
       while not service.stop:
         t.sleep(0.01)
