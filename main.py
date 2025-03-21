@@ -194,7 +194,7 @@ def loop():
     print("% Ready, press start button")
   # main state machine
   edge.lineControl(0, 0) # make sure line control is off
-  while not (service.stop or gpio.stop()):
+  while not (service.stop):
     if state == 0: # wait for start signal
       start = gpio.start() or service.args.now
       if start:
@@ -312,7 +312,7 @@ def loop():
 
 ############################################################
 
-def main():
+if __name__ == "__main__":
     if service.process_running("mqtt-client"):
       print("% mqtt-client is already running - terminating")
       print("%   if it is partially crashed in the background, then try:")

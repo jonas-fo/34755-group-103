@@ -31,6 +31,7 @@ class SIr:
     irUpdCnt = 0
     irTime = datetime.now()
     irInterval = 0
+    accTime = 0
 
     def setup(self):
       # data subscription is set in teensy_interface/build/robot.ini
@@ -54,7 +55,7 @@ class SIr:
 
     def print(self):
       from uservice import service
-      print("% IR dist " + str(self.accTime - service.startTime) + " (" +
+      print("% IR dist " + #str(self.accTime - service.startTime) + " (" +
             str(self.ir[0]) + ", " +
             str(self.ir[1]) + ", " +
             f") {self.irInterval:.4f} sec " +
@@ -76,7 +77,7 @@ class SIr:
             else:
               self.irInterval = (self.irInterval * 99 + (t1 -t0).total_seconds()) / 100
             self.irUpdCnt += 1
-            # self.print()
+            #self.print()
         else:
           used = False
         return used

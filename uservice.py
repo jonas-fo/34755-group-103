@@ -42,6 +42,7 @@ from scam import cam
 from sedge import edge
 from sgpio import gpio
 from ulog import flog
+import psutil
 
 class UService:
   host = 'IP-setup'
@@ -88,7 +89,9 @@ class UService:
                 help='Drive 1 m and stop')
     self.parser.add_argument('-p', '--pi', action='store_true',
                 help='Turn 180 degrees (Pi) and stop')
-    self.parser.add_argument('-a', '--action',
+    self.parser.add_argument('-u', '--usestate', type=int,
+                help='set mission state to this value')
+    self.parser.add_argument('-a', '--action', type=int,
                 help='Which state to start in')
     self.args = self.parser.parse_args()
     # print(f"% command line arguments: white {self.args.white}, gyro={self.args.gyro}, level={self.args.level}")
@@ -137,11 +140,16 @@ class UService:
     print("% Service - thread stopped")
 
   def runAlive(self):
+    loop = 0;
     while not self.stop:
       # tell interface that we are alive
-      service.send(service.topicCmd + "ti/alive",str(service.startTime))
-      # print(f"% sent Alive {datetime.now()}")
-      t.sleep(0.5)
+      if loop % 10 == 0:
+        service.send(service.topicCmd + "ti/alive",str(service.startTime))
+        # print(f"% sent Alive {datetime.now()}")
+      if gpio.test_stop_button():
+        self.terminate()
+      t.sleep(0.05)
+      loop += 1
     pass
 
 
@@ -263,6 +271,11 @@ class UService:
     return r[0] == 0
     pass
 
+  def process_running(self, process_name):
+    for process in psutil.process_iter(['pid', 'name']):
+      if process.info['name'] == process_name:
+        return True
+    return False
 
   def terminate(self):
     from ulog import flog
@@ -270,14 +283,23 @@ class UService:
       return
     print("% shutting down")
     if self.connected and not self.confirmedNotMaster:
-      service.send(service.topicCmd + "T0/stop","")
-      service.send(service.topicCmd + "T0/leds","14 0 0 0")
-      t.sleep(0.01)
-      service.send(service.topicCmd + "T0/leds","15 0 0 0")
-      service.send(service.topicCmd + "T0/leds","16 0 0 0")
-      t.sleep(0.01)
-      # stop interface logging
-      service.send("robobot/cmd/ti/log", "0")
+      edge.lineControl(0, 0) # make sure line control is off
+      try:
+        t.sleep(0.02)
+        service.send(service.topicCmd + "ti/rc","0 0") # stop robot control loop
+        t.sleep(0.02)
+        service.send(service.topicCmd + "T0/stop","") # should not be needed
+        # turn off LEDs
+        service.send(service.topicCmd + "T0/leds","14 0 0 0")
+        t.sleep(0.01)
+        service.send(service.topicCmd + "T0/leds","15 0 0 0")
+        service.send(service.topicCmd + "T0/leds","16 0 0 0")
+        t.sleep(0.01)
+        # stop interface logging
+        service.send("robobot/cmd/ti/log", "0")
+      except:
+        print("% Failed to send terminate commands to robot - lost mqtt server connection?")
+        pass
     self.terminating = True
     self.stop = True
     try:
@@ -300,7 +322,6 @@ class UService:
     cam.terminate()
     gpio.terminate()
     flog.terminate()
-    self.connected=False
 
 # create the service object
 service = UService()
