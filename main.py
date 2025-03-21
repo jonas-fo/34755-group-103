@@ -42,6 +42,7 @@ from scam import cam
 from uservice import service
 from simu import imu
 #import Seesaw
+import hourglass
 
 
 
@@ -275,11 +276,12 @@ def loop():
     elif state == 123:
       #Read ir values
       #service.send(service.topicCmd + "T0/sub", "ir 1000")
+      #hourglass.hourglass()
       state = 124
     elif state == 124:
-      ir.print()
-      #imu.print()
-      pass
+      #ir.print()
+      imu.print()
+      #state = 999
     else: # abort
       print(f"% Mission finished/aborted; state={state}")
       break
