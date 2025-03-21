@@ -32,20 +32,18 @@ import cv2 as cv
 from datetime import *
 from setproctitle import setproctitle
 # robot function
-from group_103.spose import pose
-from group_103.sir import ir
-from group_103.srobot import robot
-from group_103.scam import cam
-from group_103.sedge import edge
-from group_103.sgpio import gpio
-from group_103.scam import cam
-from group_103.uservice import service
-from group_103.simu import imu
+from spose import pose
+from sir import ir
+from srobot import robot
+from scam import cam
+from sedge import edge
+from sgpio import gpio
+from scam import cam
+from uservice import service
+from simu import imu
 #import Seesaw
 
 
-# set title of process, so that it is not just called Python
-setproctitle("mqtt-client")
 
 ############################################################
 
@@ -107,6 +105,51 @@ def driveOneMeter():
   service.send(service.topicCmd + "T0/leds","16 0 0 0") # end
   print("# Driving 1m ------------------------- end")
 
+def driveToLine():
+  state = 0
+  pose.tripBreset()
+  dist_to_line = 0;
+  print("% Driving to line ---------------------- right ir start ---")
+  service.send(service.topicCmd + "T0/leds","16 0 100 0") # green
+  while not (service.stop):
+    if state == 0: # forward towards line
+      if ir.ir[0] < 0.2:
+        service.send("robobot/cmd/ti/rc","0.2 0.0") # (forward m/s, turn-rate rad/sec)
+        service.send("robobot/cmd/T0/lognow","3") # (start Teensy log)
+        state = 1
+    elif state == 1:
+      if pose.tripB > 1.0 or pose.tripBtimePassed() > 15:
+        service.send("robobot/cmd/ti/rc","0.0 0.0") # (forward m/s, turn-rate rad/sec)
+        state = 2
+      if edge.lineValidCnt > 4:
+        # start follow line
+        edge.lineControl(0.2, 0)
+        dist_to_line = pose.tripB
+        pose.tripBreset()
+        print(" to state 10")
+        state = 10
+      pass
+    elif state == 2:
+      if abs(pose.velocity()) < 0.001:
+        print(" to state 99")
+        state = 99
+    elif state == 10:
+      if edge.lineValidCnt < 2:
+        edge.lineControl(0, 0)
+        service.send("robobot/cmd/ti/rc","0.0 0.0") # (forward m/s, turn-rate rad/sec)
+        print(" to state 2")
+        state = 2
+    else:
+      print(f"# drive to line {dist_to_line:.3f}m, then along line {pose.tripB:.3f}m in {pose.tripBtimePassed():.3f} seconds")
+      service.send("robobot/cmd/ti/rc","0.0 0.0") # (forward m/s, turn-rate rad/sec)
+      break;
+    # print(f"# drive {state}, now {pose.tripB:.3f}m in {pose.tripBtimePassed():.3f} seconds, line valid cnt = {edge.lineValidCnt}")
+    t.sleep(0.01)
+  pass
+  service.send(service.topicCmd + "T0/leds","16 0 0 0") # end
+  print("% Driving to line ------------------------- end")
+
+
 def driveTurnPi():
   state = 0
   pose.tripBreset()
@@ -160,17 +203,20 @@ def loop():
         service.send(service.topicCmd + "ti/rc","0.0 0.0") # (forward m/s, turn-rate rad/sec)
         # follow line (at 0.25cm/s)
         edge.lineControl(0.20, -0.5) # m/s and position on line -2.0..2.0
+        service.send(service.topicCmd + "T0/servo","1 -200 200")
+        #robobot/drive/T0/servo 1 400 200
         state = 12 # until no more line
         pose.tripBreset() # use trip counter/timer B
     elif state == 12: # following line
       #imu.print()
       #imu.decode("")
+      print("Line valid count",edge.lineValidCnt)
       if edge.lineValidCnt == 0 or pose.tripBtimePassed() > 15:
         edge.lineControl(0.20, 0.5) # m/s and position on line -2.0..2.0
         pose.tripBreset() # use trip counter/timer B
         state = 15
     elif state==15:
-      edge.lineControl(0.20, 0.5)
+      #edge.lineControl(0.20, 0.5)
       print("crossing cnt: ",edge.crossingLineCnt)
       print("Line cnt: ",edge.lineValidCnt)
       if edge.crossingLineCnt > 0:
@@ -203,6 +249,7 @@ def loop():
     elif state == 20: # image analysis
       imageAnalysis(images == 2)
       images += 1
+      service.send(service.topicCmd + "T0/servo","1 -10000 200")
       # blink LED
       if ledon:
         service.send(service.topicCmd + "T0/leds","16 0 64 0")
@@ -222,6 +269,17 @@ def loop():
     elif state == 102:
       driveTurnPi();
       state = 100;
+    elif state == 103:
+      driveToLine()
+      state = 100
+    elif state == 123:
+      #Read ir values
+      #service.send(service.topicCmd + "T0/sub", "ir 1000")
+      state = 124
+    elif state == 124:
+      ir.print()
+      #imu.print()
+      pass
     else: # abort
       print(f"% Mission finished/aborted; state={state}")
       break
@@ -255,14 +313,22 @@ def loop():
 ############################################################
 
 def main():
-    print("% Starting")
-    # where is the MQTT data server:
-    service.setup('localhost') # localhost
-    #service.setup('10.197.217.81') # Juniper
-    #service.setup('10.197.217.80') # Newton
-    #service.setup('bode.local') # Bode
-    if service.connected:
-      loop()
-    service.terminate()
-    print("% Main Terminated")
+    if service.process_running("mqtt-client"):
+      print("% mqtt-client is already running - terminating")
+      print("%   if it is partially crashed in the background, then try:")
+      print("%     pkill mqtt-client")
+      print("%   or, if that fails use the most brutal kill")
+      print("%     pkill -9 mqtt-client")
+    else:
+      setproctitle("mqtt-client")
+      print("% Starting")
+      # where is the MQTT data server:
+      service.setup('localhost') # localhost
+      #service.setup('10.197.217.81') # Juniper
+      #service.setup('10.197.217.80') # Newton
+      #service.setup('bode.local') # Bode
+      if service.connected:
+        loop()
+      service.terminate()
+      print("% Main Terminated")
 

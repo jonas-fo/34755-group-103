@@ -66,8 +66,8 @@ class SEdge:
     lineCtrl = False # private
     # try with a P-Lead controller
     lineKp = 3.0
-    lineTauZ = 0.8
-    lineTauP = 0.15
+    lineTauZ = 0.75
+    lineTauP = 0.20
     # Lead pre-calculated factors
     tauP2pT = 1.0
     tauP2mT = 0.0
