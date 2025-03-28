@@ -93,6 +93,8 @@ class UService:
                 help='set mission state to this value')
     self.parser.add_argument('-a', '--action', type=int,
                 help='Which state to start in')
+    self.parser.add_argument('-d', '--distance', action='store_true',
+                help='calibrate the distance sensor')
     self.args = self.parser.parse_args()
     # print(f"% command line arguments: white {self.args.white}, gyro={self.args.gyro}, level={self.args.level}")
     # allow close down on ctrl-C
