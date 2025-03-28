@@ -35,7 +35,6 @@ from setproctitle import setproctitle
 from spose import pose
 from sir import ir
 from srobot import robot
-from scam import cam
 from sedge import edge
 from sgpio import gpio
 from scam import cam
@@ -191,20 +190,22 @@ def loop():
     state = 101 # run 1m
   elif service.args.pi:
     state = 102 # run 1m
+  elif service.args.distance:
+    state=500
   elif not service.args.now:
     print("% Ready, press start button")
   # main state machine
   edge.lineControl(0, 0) # make sure line control is off
   while not (service.stop):
     if state == 0: # wait for start signal
-      start = gpio.start() or service.args.now
+      start = True #= gpio.start() or service.args.now
       if start:
         print("% Starting")
         service.send(service.topicCmd + "T0/leds","16 0 0 30") # blue: running
         service.send(service.topicCmd + "ti/rc","0.0 0.0") # (forward m/s, turn-rate rad/sec)
         # follow line (at 0.25cm/s)
         edge.lineControl(0.20, -0.5) # m/s and position on line -2.0..2.0
-        service.send(service.topicCmd + "T0/servo","1 -200 200")
+        #service.send(service.topicCmd + "T0/servo","1 -200 200")
         #robobot/drive/T0/servo 1 400 200
         state = 12 # until no more line
         pose.tripBreset() # use trip counter/timer B
@@ -234,7 +235,7 @@ def loop():
         if pose.tripBh > np.pi/4:# or pose.tripBtimePassed() > 10:
           service.send(service.topicCmd + "ti/rc","0 0")
           edge.lineControl(0.20,0.5)
-          state = 15
+          state = 17
           pose.tripBreset()
       if edge.lineValidCnt == 0 or pose.tripBtimePassed() > 5:
         # no more line
@@ -242,6 +243,13 @@ def loop():
         pose.tripBreset()
         #service.send(service.topicCmd + "ti/rc","0.1 0.5") # turn left
         state = 14 # turn left
+    elif state == 17:
+      if pose.tripBtimePassed()>3:
+        edge.lineControl(0,0)
+        service.send(service.topicCmd + "T0/servo","1 -200 200")
+        service.send(service.topicCmd + "T0/servo","1 -10000 200")
+        state = 15
+        pose.tripBreset()
     elif state == 14: # turning left
       if pose.tripBh > np.pi/2 or pose.tripBtimePassed() > 10:
         state = 20 # finished   =17 go look for line
@@ -276,12 +284,15 @@ def loop():
     elif state == 123:
       #Read ir values
       #service.send(service.topicCmd + "T0/sub", "ir 1000")
-      #hourglass.hourglass()
-      state = 124
+      hourglass.hourglass()
+      state = 999
     elif state == 124:
       #ir.print()
-      imu.print()
-      #state = 999
+      #imu.print()
+      state = 999
+    elif state == 500:
+      # Calibrate distance sensor
+      pass
     else: # abort
       print(f"% Mission finished/aborted; state={state}")
       break
