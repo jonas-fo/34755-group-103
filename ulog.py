@@ -40,6 +40,7 @@ class ULog:
     self.f.write(f"%     Line sensor: Kp={edge.lineKp}, tau_z={edge.lineTauZ}s, tau_p={edge.lineTauP}s\n")
     self.f.write("% 10,11 trip A (distance and heading change)\n")
     self.f.write("% 12,13 trip B (distance and heading change)\n")
+    self.f.write("% 14,15 side and front ir distance values\n")
     pass
 
   def writeRemark(self, remark = "remark"):
@@ -81,7 +82,8 @@ class ULog:
       # trip A distance and heading change
       self.f.write(f"{pose.tripA:.3f} {pose.tripAh:.3f} ")
       # trip B distance and heading change
-      self.f.write(f"{pose.tripB:.4f} {pose.tripBh:.4f}\n")
+      self.f.write(f"{pose.tripB:.4f} {pose.tripBh:.4f} ")
+      self.f.write(f"{ir.ir[0]} {ir.ir[1]} \n")
 
   def terminate(self):
     self.f.close()

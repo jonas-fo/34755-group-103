@@ -25,6 +25,7 @@ def hourglass():
                 service.send(service.topicCmd + "ti/rc","0.2 0.0") # (forward m/s, turn-rate rad/sec)
                 state = 1
                 pose.tripBreset()
+                #TODO: Implement a way to detect false alarms
 
         elif state == 1:
             print(edge.lineValidCnt)

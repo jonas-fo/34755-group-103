@@ -59,6 +59,7 @@ def imageAnalysis(save):
         # print(f"% At {imgTime}, got image {cam.cnt} of size= {w}x{h}")
         pass
       edge.paint(img)
+      
       if not gpio.onPi:
         cv.imshow('frame for analysis', img)
       if save:
@@ -291,6 +292,7 @@ def loop():
       #imu.print()
       state = 999
     elif state == 500:
+      ir.print()
       # Calibrate distance sensor
       pass
     else: # abort
