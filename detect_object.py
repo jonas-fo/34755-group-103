@@ -20,7 +20,7 @@ dist_coeffs = calib_data["distortion_coeffs"]
 capture_lock = threading.Lock()
 
 
-def pixel_to_world(x, y, camera_matrix, camera_height, radius):
+def pixel_to_world(x, y, camera_matrix, radius):
     """Convert pixel coordinates (x, y) to real-world coordinates (X, Y)"""
     fx = camera_matrix[0, 0]  # Focal length in x
     fy = camera_matrix[1, 1]  # Focal length in y
@@ -40,9 +40,39 @@ def pixel_to_world(x, y, camera_matrix, camera_height, radius):
     X = (x - cx) * Z / fx
     Y = (y - cy) * Z / fy
 
-    return X, Y, Z
+    """Now change to robots coordinates"""
+    #Intrinsic properties of camera on robot NOT SURE ABOUT THESE VALUES YET
+    theta=11
+    cxr=0.016 #camera lean in x 
+    cyr=0
+    czr=0.188 #camera_height
+    
+    #transformation from world to robot: 
+    T = np.array([
+        [np.cos(theta), 0, np.sin(theta), -cxr],
+        [0, 1, 0, cyr],
+        [-np.sin(theta), 0, np.cos(theta), -cxr],
+        [0, 0, 0, 1]
+    ])
+    
+    # Frame change matrix
+    F = np.array([
+        [0, 0, 1, 0],
+        [-1, 0, 0, 0],
+        [0, -1, 0, 0],
+        [0, 0, 0, 1]
+    ])
+    
+    # Camera coordinates in [m] (the camera to world coordinates)
+    C = np.array([[X], [Y], [Z], [1]])
+    
+    # Compute robot coordinates
+    R = np.dot(np.dot(T, F), C)
+    print("Robot coordinates:\n", R)
 
-def process_frame(camera_matrix, dist_coeffs, camera_height=0.3, save=True):
+    return X, Y, Z, R
+
+def process_frame(camera_matrix, dist_coeffs, save=True):
     """Captures, undistorts, and detects a golf ball."""
     with capture_lock:
         ok, frame, imgTime = cam.getImage()
@@ -74,7 +104,7 @@ def process_frame(camera_matrix, dist_coeffs, camera_height=0.3, save=True):
             x, y, radius = int(x), int(y), int(radius)
 
             # Convert to real-world coordinates
-            X_world, Y_world, Z_world = pixel_to_world(x, y, camera_matrix, camera_height, radius)
+            X_world, Y_world, Z_world, Robot_coor = pixel_to_world(x, y, camera_matrix, radius)
 
             # Draw detected ball
             cv2.circle(undistorted_frame, (x, y), radius, (0, 255, 0), 2)
@@ -84,7 +114,7 @@ def process_frame(camera_matrix, dist_coeffs, camera_height=0.3, save=True):
                 img_name = os.path.join(save_path, f"image_{imgTime.strftime('%Y_%b_%d_%H%M%S_')}.jpg")
                 cv2.imwrite(img_name, undistorted_frame)
                 print(f"% Saved image {img_name}")
-            return undistorted_frame, (X_world, Y_world, Z_world)
+            return undistorted_frame, (X_world, Y_world, Z_world, Robot_coor)
         
         else:
             print("Contour found, but radius too small.")
@@ -98,11 +128,12 @@ def test_loop():
         if user_input.lower() == 'exit':
             break
         else:
-    
             processed_frame, ball_position = process_frame(camera_matrix, dist_coeffs)
             #print(f"Ball detected at: {ball_position}")
             if ball_position:
                 print(f"Ball detected at: {ball_position}")
+                
+        
 
 
 
