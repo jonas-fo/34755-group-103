@@ -5,6 +5,8 @@ from setproctitle import setproctitle
 from uservice import service
 import threading
 import os
+import math
+import time
 
 #to save image processed: 
 # Create directory if it doesn't exist
@@ -51,7 +53,7 @@ def pixel_to_world(x, y, camera_matrix, radius):
     T = np.array([
         [np.cos(theta), 0, np.sin(theta), -cxr],
         [0, 1, 0, cyr],
-        [-np.sin(theta), 0, np.cos(theta), -cxr],
+        [-np.sin(theta), 0, np.cos(theta), -czr],
         [0, 0, 0, 1]
     ])
     
@@ -71,6 +73,56 @@ def pixel_to_world(x, y, camera_matrix, radius):
     print("Robot coordinates:\n", R)
 
     return X, Y, Z, R
+
+def move_robot_to_target(Z,X, stop_distance=0.20):
+    
+    ###########Method 1 for arriving at ball ###################
+    forward_speed=0.15 # m/s
+    turn_speed=0.5 # rad/s
+    distance=Z-stop_distance
+    
+    #use the X,Z for the turn rate for 1 sec:
+    angle=math.atan2(X,Z)
+
+    turn_time=abs(angle/turn_speed)
+    if angle > 0:
+        print("Turning left...")
+        service.send(service.topicCmd + "ti/rc", "0 " + str(turn_speed))
+        time.sleep(turn_time)
+        service.send(service.topicCmd + "ti/rc", "0 0")
+        print("Turned left.")
+        return
+    elif angle < 0:
+        print("Turning right...")
+        service.send(service.topicCmd + "ti/rc", "0 "+str(-turn_speed))
+        time.sleep(turn_time)
+        service.send(service.topicCmd + "ti/rc", "0 0")
+        print("Turned right.")
+        return
+    else:
+        print("No turning needed.")
+        return
+    
+    
+    # find the distance to the target after turning (centering)
+    #if distance <= 0:
+    #    print("Already close enough to the target. OR too close CHECK")
+    #    return
+    #else:
+    #    move_time=distance/forward_speed
+#
+    #    print(f"Moving forward for {move_time:.2f} seconds...")
+#
+    #    service.send(service.topicCmd + "ti/rc", f"{forward_speed} 0")
+    #    time.sleep(move_time)
+    #    service.send(service.topicCmd + "ti/rc", "0 0")
+    #    print("Arrived at target.")
+    #    return 
+    
+    
+    
+
+
 
 def process_frame(camera_matrix, dist_coeffs, save=True):
     """Captures, undistorts, and detects a golf ball."""
@@ -132,7 +184,12 @@ def test_loop():
             #print(f"Ball detected at: {ball_position}")
             if ball_position:
                 print(f"Ball detected at: {ball_position}")
-                
+                move_robot_to_target(ball_position[2],ball_position[0])
+                print("Moving robot to target...")
+            
+            else:
+                print("No ball detected.")
+                continue
         
 
 
@@ -154,5 +211,8 @@ if __name__ == "__main__":
         # Run the main loop which will listen for the exit command only
         test_loop()
 
+        
+        
+        
     service.terminate()
     print("% Main Terminated")

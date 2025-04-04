@@ -42,6 +42,7 @@ from uservice import service
 from simu import imu
 #import Seesaw
 import hourglass
+import detect_object
 
 
 
@@ -255,6 +256,8 @@ def loop():
       if pose.tripBh > np.pi/2 or pose.tripBtimePassed() > 10:
         state = 20 # finished   =17 go look for line
         service.send(service.topicCmd + "ti/rc","0 0") # stop for images
+        processed_frame, ball_position = detect_object.process_frame(detect_object.camera_matrix, detect_object.dist_coeffs)
+        print("Ball postion: ",ball_position)
       print(f"% --- state {state}, h = {pose.tripBh:.4f}, t={pose.tripBtimePassed():.3f}")
     elif state == 20: # image analysis
       imageAnalysis(images == 2)
