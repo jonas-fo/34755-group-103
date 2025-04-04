@@ -298,6 +298,9 @@ def loop():
       ir.print()
       # Calibrate distance sensor
       pass
+    elif state ==200:
+      detect_object.test_loop()
+      state=999
     else: # abort
       print(f"% Mission finished/aborted; state={state}")
       break

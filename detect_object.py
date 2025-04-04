@@ -71,10 +71,11 @@ def pixel_to_world(x, y, camera_matrix, radius):
     # Compute robot coordinates
     R = np.dot(np.dot(T, F), C)
     print("Robot coordinates:\n", R)
+    R=R.flatten()
 
     return X, Y, Z, R
 
-def move_robot_to_target(Z,X, stop_distance=0.20):
+def move_robot_to_target(Z,X, stop_distance=0.35):
     
     ###########Method 1 for arriving at ball ###################
     forward_speed=0.15 # m/s
@@ -86,38 +87,38 @@ def move_robot_to_target(Z,X, stop_distance=0.20):
 
     turn_time=abs(angle/turn_speed)
     if angle > 0:
-        print("Turning left...")
-        service.send(service.topicCmd + "ti/rc", "0 " + str(turn_speed))
-        time.sleep(turn_time)
-        service.send(service.topicCmd + "ti/rc", "0 0")
-        print("Turned left.")
-        return
-    elif angle < 0:
         print("Turning right...")
-        service.send(service.topicCmd + "ti/rc", "0 "+str(-turn_speed))
+        service.send(service.topicCmd + "ti/rc", "0 " + str(-turn_speed))
         time.sleep(turn_time)
         service.send(service.topicCmd + "ti/rc", "0 0")
         print("Turned right.")
-        return
+        
+    elif angle < 0:
+        print("Turning lefft...")
+        service.send(service.topicCmd + "ti/rc", "0 "+str(turn_speed))
+        time.sleep(turn_time)
+        service.send(service.topicCmd + "ti/rc", "0 0")
+        print("Turned lefft.")
+        
     else:
         print("No turning needed.")
+        
+    
+    
+     #find the distance to the target after turning (centering)
+    if distance <= 0:
+        print("Already close enough to the target. OR too close CHECK")
         return
-    
-    
-    # find the distance to the target after turning (centering)
-    #if distance <= 0:
-    #    print("Already close enough to the target. OR too close CHECK")
-    #    return
-    #else:
-    #    move_time=distance/forward_speed
-#
-    #    print(f"Moving forward for {move_time:.2f} seconds...")
-#
-    #    service.send(service.topicCmd + "ti/rc", f"{forward_speed} 0")
-    #    time.sleep(move_time)
-    #    service.send(service.topicCmd + "ti/rc", "0 0")
-    #    print("Arrived at target.")
-    #    return 
+    else:
+        move_time=distance/forward_speed
+
+        print(f"Moving forward for {move_time:.2f} seconds...")
+
+        service.send(service.topicCmd + "ti/rc", str(forward_speed)+"0")
+        time.sleep(move_time)
+        service.send(service.topicCmd + "ti/rc", "0 0")
+        print("Arrived at target.")
+        return 
     
     
     
@@ -183,7 +184,7 @@ def test_loop():
             processed_frame, ball_position = process_frame(camera_matrix, dist_coeffs)
             #print(f"Ball detected at: {ball_position}")
             if ball_position:
-                print(f"Ball detected at: {ball_position}")
+                print(f"Ball detected at: {ball_position}, Robot Z-coordinates: {ball_position[3][2]}")
                 move_robot_to_target(ball_position[2],ball_position[0])
                 print("Moving robot to target...")
             
