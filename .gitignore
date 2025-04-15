@@ -172,3 +172,5 @@ cython_debug/
 
 #Mac shite
 .DS_Store
+
+image_*
