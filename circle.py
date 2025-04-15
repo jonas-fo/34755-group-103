@@ -5,20 +5,25 @@ from sedge import edge
 from spose import pose
 import numpy as np
 from datetime import *
+from detect_object import process_frame, camera_matrix,dist_coeffs, turn
 
 gyro_value = 25
 acc_value = 0.95
 time_value = 100000 #.001 seconds
 amount_of_checks = 1000
+turn_speed = 0.5
+turn_leeway = 50
 
+image_center = 820/2
 
 def circle():
     print("starting circle")
     pose.tripBreset()
-    state = 0
+    state = 40
     detect_times = 0
     time_at_detect = datetime.now()
     normal_times=0
+    x = 0
     while not service.stop:
         if state == 0:
             print("starting driving")
@@ -62,6 +67,53 @@ def circle():
                 normal_times=0
                 #Try again if a second has passed, and it seems like there is still tilt
                 state = 0
+        
+        elif state == 40:
+            _,_,coords = process_frame(camera_matrix,dist_coeffs,0.1)
+            if coords is not None:
+                x = coords[0]
+            print("Circle", x)
+            if x < image_center - turn_leeway:
+                service.send(service.topicCmd + "ti/rc","0.0 0.2")
+                state = 51
+                #state = 999
+            elif x > image_center + turn_leeway:
+                service.send(service.topicCmd + "ti/rc","0.0 -0.2")
+                state = 52
+                #state = 999
+            else:
+                state = 60
+                #state = 999
+        
+        elif state == 51:
+            _,_,coords = process_frame(camera_matrix,dist_coeffs,0.1)
+            if coords is not None:
+                x = coords[0]
+            print("Circle 51", x)
+            if x > image_center - turn_leeway:
+                service.send(service.topicCmd + "ti/rc","0.0 0.0")
+                state = 40
+        elif state == 52:
+            _,_,coords = process_frame(camera_matrix,dist_coeffs,0.1)
+            if coords is not None:
+                x = coords[0]
+            print("Circle 52", x)
+            if x < image_center + turn_leeway:
+                service.send(service.topicCmd + "ti/rc","0.0 0.0")
+                state = 40
+
+        elif state==60:
+            turn(angle=1.57)
+            service.send(service.topicCmd + "ti/rc","0.2 0.5")
+            pose.tripBreset()
+            state = 70
+        
+        elif state==70:
+            print(pose.tripBh)
+            if pose.tripBh >= np.pi*2:
+                pose.tripBreset()
+                state = 80
+                service.send(service.topicCmd + "ti/rc","0.0 0.0")
 
         
         else:

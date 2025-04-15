@@ -241,7 +241,7 @@ def loop():
           service.send(service.topicCmd + "ti/rc","0.1 0")
           if pose.tripBtimePassed > 0.5: #needs tuning
             #edge.lineControl(0.20,0.5) move to ball
-            processed_frame, ball_position = detect_object.process_frame(detect_object.camera_matrix, detect_object.dist_coeffs,0)
+            processed_frame, ball_position,_ = detect_object.process_frame(detect_object.camera_matrix, detect_object.dist_coeffs,0)
             print("Ball postion: ",ball_position)
             detect_object.move_robot_to_target(ball_position[2],ball_position[0]) #find bolden
             pose.tripBreset()
@@ -304,7 +304,7 @@ def loop():
     elif state == 24:
       if pose.tripBh > np.pi or pose.tripBtimePassed() > 3: #needs tuning
         service.send(service.topicCmd + "ti/rc","0.0 0.0")
-        processed_frame, ball_position = detect_object.process_frame(detect_object.camera_matrix, detect_object.dist_coeffs,0)
+        processed_frame, ball_position, _ = detect_object.process_frame(detect_object.camera_matrix, detect_object.dist_coeffs,0)
         print("Ball postion: ",ball_position)
         if ball_position != None:
           detect_object.move_robot_to_target(ball_position[2],ball_position[0])
@@ -378,7 +378,7 @@ def loop():
       if pose.tripBh > np.pi/2 or pose.tripBtimePassed() > 10:
         state = 20 # finished   =17 go look for line
         service.send(service.topicCmd + "ti/rc","0 0") # stop for images
-        processed_frame, ball_position = detect_object.process_frame(detect_object.camera_matrix, detect_object.dist_coeffs,0)
+        processed_frame, ball_position,_ = detect_object.process_frame(detect_object.camera_matrix, detect_object.dist_coeffs,0)
         print("Ball postion: ",ball_position)
       print(f"% --- state {state}, h = {pose.tripBh:.4f}, t={pose.tripBtimePassed():.3f}")
     elif state == 20: # image analysis
@@ -426,31 +426,90 @@ def loop():
       ir.print()
       # Calibrate distance sensor
       pass
-    elif state ==200:
-      #detect_object.test_loop()
-      service.send(service.topicCmd + "ti/rc","0.0 0.0")
-      processed_frame, ball_position = detect_object.process_frame(detect_object.camera_matrix, detect_object.dist_coeffs,0)
-      print("Ball postion: ",ball_position)
-      if ball_position != None:
-        detect_object.move_robot_to_target(ball_position[2],ball_position[0])
+    elif state ==200: 
+      
+      service.send(service.topicCmd + "ti/rc", "0.0 0.0")
+      #avg_position=None
+      # ##### once ball is seen tilt only: 
+      # processed_frame, ball_position, _ = detect_object.process_frame(
+      #         detect_object.camera_matrix,
+      #         detect_object.dist_coeffs,
+      #         0)
+      # 
+      # 
+      # detect_object.move_robot_to_target(ball_position[2], ball_position[0], followup=False)
+      # print("First tilt for better average shot")
+      
+      #
+      avg_position = detect_object.get_average_ball_position(
+          detect_object.camera_matrix,
+          detect_object.dist_coeffs
+      )
+      
+      if avg_position is not None:
+          # avg_position[3] is robot_coords = [x, y, z, 1], so use [3][2] for Z and [3][0] for X
+          avg_X, avg_Y, avg_Z, robot_coords = avg_position
+          detect_object.move_robot_to_target(avg_Z, avg_X)
+          print("3 images were taken, moving robot to target")
       else:
-        print("No Balls!")
-      service.send(service.topicCmd + "T0/servo","1 0 200")
+          # If 3 images weren’t captured successfully, take one last shot
+          processed_frame, ball_position, _ = detect_object.process_frame(
+              detect_object.camera_matrix,
+              detect_object.dist_coeffs,
+              object_d=0.043
+          )
+          print("Ball position:", ball_position)
+          if ball_position is not None:
+              print("Backup image taken")
+              detect_object.move_robot_to_target(ball_position[2], ball_position[0])
+          else:
+              print("No Balls!")
+              print("Skipping movement due to no detection.")
+      
+      service.send(service.topicCmd + "T0/servo", "1 0 200") #this is perfect for straight arm
+      t.sleep(1)
+      service.send(service.topicCmd + "T0/servo", "1 10000 200") #perfect for resting arm
+      t.sleep(1)
       print("Arm Down!")
-      #for i in range(-850,-800,10):
-      #  service.send(service.topicCmd + "T0/servo", "1 "+str(i)+" 200")
-      #  t.sleep(0.5)
-      #service.send(service.topicCmd + "T0/servo","1 -1000 200")
-      service.send(service.topicCmd + "T0/servo","1 -1000 200")
-      ##t.sleep(1)
-      ##aruco_navigator.turn(angle=1.57)
-      #t.sleep(1)
-      #service.send(service.topicCmd + "T0/servo","1 -700 200")
-      #t.sleep(1)
-      #service.send(service.topicCmd + "T0/servo","1 -10000 200")
-      #service.send(service.topicCmd + "ti/rc","-0.001 0.5")
-      #aruco_navigator.test_loop()
+      
+      # #Ball is now captured now turn with ball inside
+      # detect_object.turn(angle=1.57)
+      # t.sleep(1)
+      # 
+      # ##### Detect the hole:
+      # avg_position = detect_object.get_average_ball_position(
+      #     detect_object.camera_matrix,
+      #     detect_object.dist_coeffs, object_d=0.052
+      # )
+      # 
+      # if avg_position is not None:
+      #     # avg_position[3] is robot_coords = [x, y, z, 1], so use [3][2] for Z and [3][0] for X
+      #     avg_X, avg_Y, avg_Z, robot_coords = avg_position
+      #     detect_object.move_robot_to_target(avg_Z, avg_X)
+      #     print("3 images were taken, moving robot to target")
+      # t.sleep(3)
+      # #### Lift Arm up for next STATE 
+      # service.send(service.topicCmd + "T0/servo", "1 -1000 200") #perfect for resting arm straight up
+# 
       state=999
+      
+      
+    elif state==201:
+      #Search for hole
+      avg_position = detect_object.get_average_ball_position(
+          detect_object.camera_matrix,
+          detect_object.dist_coeffs, object_d=0.052
+      )
+      
+      if avg_position is not None:
+          # avg_position[3] is robot_coords = [x, y, z, 1], so use [3][2] for Z and [3][0] for X
+          avg_X, avg_Y, avg_Z, robot_coords = avg_position
+          detect_object.move_robot_to_target(avg_Z, avg_X)
+          print("3 images were taken, moving robot to target")
+          
+      cv.imshow("Processed Frame", processed_frame)
+      state=999
+    
     else: # abort
       print(f"% Mission finished/aborted; state={state}")
       break

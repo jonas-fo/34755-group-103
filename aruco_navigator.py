@@ -16,7 +16,7 @@ if not os.path.exists(save_path):
 
 
 # Load calibration data
-calib_data = np.load("/home/local/svn/robobot/calibration_data.npz")
+calib_data = np.load("/home/local/svn/robobot/mqtt_python/group_103/calibration_data.npz")
 camera_matrix = calib_data["camera_matrix"]
 dist_coeffs = calib_data["distortion_coeffs"]
 capture_lock = threading.Lock()
