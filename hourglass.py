@@ -8,6 +8,8 @@ import numpy as np
 
 distance_to_regbot = 0.5
 distance_to_gate = 0.2
+minimum_dist_to_regbot = 0.2
+
 
 desired_stop_heading = -0.6
 
@@ -18,6 +20,7 @@ def hourglass():
     done = False
     pose.tripBreset()
     hourglass_state = -1
+    prev_state = 0
     while not (service.stop):
         if hourglass_state == -1:
             print(ir.ir[1])
@@ -36,7 +39,7 @@ def hourglass():
                 service.send(service.topicCmd + "ti/rc","0.0 0.5") # (forward m/s, turn-rate rad/sec)
                 hourglass_state = 2
                 pose.tripBreset()
-            if ir.ir[1] < distance_to_regbot: # If the regbot was detected to be gone due to noise, stop and wait again
+            elif ir.ir[1] < distance_to_regbot: # If the regbot was detected to be gone due to noise, stop and wait again
                 service.send(service.topicCmd + "ti/rc","0.0 0.0") # (forward m/s, turn-rate rad/sec)
                 hourglass_state = 0
         elif hourglass_state == 2:
@@ -49,16 +52,37 @@ def hourglass():
             print(pose.tripBh)
             if ir.ir[0] < distance_to_gate or pose.tripBh <= desired_stop_heading:
                 hourglass_state=4
+            elif ir.ir[1] < minimum_dist_to_regbot:
+                edge.lineControl(0.0,0.0)
+                service.send(service.topicCmd + "ti/rc","0.0 0.0") # (forward m/s, turn-rate rad/sec)
+                prev_state = hourglass_state
+                hourglass_state = 10
         elif hourglass_state == 4:
             print(pose.tripBh)
             if ir.ir[0] > distance_to_gate or pose.tripBh <= desired_stop_heading:
                 hourglass_state = 5
+            elif ir.ir[1] < minimum_dist_to_regbot:
+                edge.lineControl(0.0,0.0)
+                service.send(service.topicCmd + "ti/rc","0.0 0.0") # (forward m/s, turn-rate rad/sec)
+                prev_state = hourglass_state
+                hourglass_state = 10
         elif hourglass_state == 5:
             print(pose.tripBh)
             if ir.ir[0] < distance_to_gate or pose.tripBh <= desired_stop_heading:
                 edge.lineControl(0.0,0.0)
                 service.send(service.topicCmd + "ti/rc","0.0 0.0") # (forward m/s, turn-rate rad/sec)
                 hourglass_state = 6
+            elif ir.ir[1] < minimum_dist_to_regbot:
+                edge.lineControl(0.0,0.0)
+                service.send(service.topicCmd + "ti/rc","0.0 0.0") # (forward m/s, turn-rate rad/sec)
+                prev_state = hourglass_state
+                hourglass_state = 10
+
+        elif hourglass_state == 10:
+            #The robot has gotten too close to the regbot.
+            if ir.ir[1] > minimum_dist_to_regbot:
+                edge.lineControl(0.15, 1.5) # m/s and position on line -2.0..2.0
+                hourglass_state=prev_state
         elif hourglass_state == 999: # Test state
             print(pose.tripBh)
             pass
