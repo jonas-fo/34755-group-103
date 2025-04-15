@@ -75,7 +75,7 @@ def pixel_to_world(x, y, camera_matrix, radius):
 
     return X, Y, Z, R
 
-def move_robot_to_target(Z,X, stop_distance=0.35):
+def move_robot_to_target(Z,X, stop_distance=0.30):
     
     ###########Method 1 for arriving at ball ###################
     forward_speed=0.15 # m/s
@@ -125,7 +125,8 @@ def move_robot_to_target(Z,X, stop_distance=0.35):
 
 
 
-def process_frame(camera_matrix, dist_coeffs, save=True):
+def process_frame(camera_matrix, dist_coeffs, obj):
+    save=True
     """Captures, undistorts, and detects a golf ball."""
     with capture_lock:
         ok, frame, imgTime = cam.getImage()
@@ -136,12 +137,28 @@ def process_frame(camera_matrix, dist_coeffs, save=True):
         # Undistort the frame
         undistorted_frame = cv2.undistort(frame, camera_matrix, dist_coeffs, None, camera_matrix,)
 
-        # Convert to HSV and apply thresholding
-        hsv = cv2.cvtColor(undistorted_frame, cv2.COLOR_BGR2HSV)
-        lower_orange = np.array([5, 100, 100])  
-        upper_orange = np.array([15, 255, 255])
-        mask = cv2.inRange(hsv, lower_orange, upper_orange)
+        if obj == 0:
+            # Convert to HSV and apply thresholding
+            hsv = cv2.cvtColor(undistorted_frame, cv2.COLOR_BGR2HSV)
+            lower_orange = np.array([5, 100, 100])  
+            upper_orange = np.array([15, 255, 255])
+            mask = cv2.inRange(hsv, lower_orange, upper_orange)
+        elif obj == 1:
+            hsv = cv2.cvtColor(undistorted_frame, cv2.COLOR_BGR2HSV)
+            lower_brown = np.array([0, 0, 0])  
+            upper_brown = np.array([42, 145, 176])
+            mask = cv2.inRange(hsv, lower_brown, upper_brown)
+        elif obj == 2:
+            lower_red1 = np.array([0, 150, 100])
+            upper_red1 = np.array([10, 255, 255])
 
+            lower_red2 = np.array([170, 150, 100])
+            upper_red2 = np.array([180, 255, 255])
+
+            # Create masks and combine them
+            mask1 = cv2.inRange(hsv, lower_red1, upper_red1)
+            mask2 = cv2.inRange(hsv, lower_red2, upper_red2)
+            mask = cv2.bitwise_or(mask1, mask2)
         # Find contours
         contours, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
 
@@ -177,17 +194,22 @@ def test_loop():
     """ Runs the main loop: captures frames, processes them, and detects the golf ball. """
     
     while True:
-        user_input = input("Press Enter to capture an image or type 'exit' to quit: ")
+        user_input = input("Press Enter to move to object, 1 to capture image or type 'exit' to quit: ")
         if user_input.lower() == 'exit':
             break
+        elif user_input.lower() == '1':
+            processed_frame, ball_position = process_frame(camera_matrix, dist_coeffs,1)
+            print("hole at: ", ball_position)
+            move_robot_to_target(ball_position[2],ball_position[0])
+            print("Moving robot to target...")
         else:
-            processed_frame, ball_position = process_frame(camera_matrix, dist_coeffs)
+            processed_frame, ball_position = process_frame(camera_matrix, dist_coeffs,0)
             #print(f"Ball detected at: {ball_position}")
             if ball_position:
                 print(f"Ball detected at: {ball_position}, Robot Z-coordinates: {ball_position[3][2]}")
                 move_robot_to_target(ball_position[2],ball_position[0])
                 print("Moving robot to target...")
-            
+                
             else:
                 print("No ball detected.")
                 continue

@@ -44,6 +44,7 @@ from simu import imu
 import hourglass
 import detect_object
 import circle
+import aruco_navigator
 
 
 
@@ -216,15 +217,15 @@ def loop():
       #imu.print()
       #imu.decode("")
       print("Line valid count",edge.lineValidCnt)
-      if edge.lineValidCnt == 0 or pose.tripBtimePassed() > 15: #skift time tilbage til 15
-        edge.lineControl(0.18, 0.5) # m/s and position on line -2.0..2.0
+      if edge.lineValidCnt == 0 or pose.tripBtimePassed() > 2: #skift time tilbage til 15
+        edge.lineControl(0.17, 0.5) # m/s and position on line -2.0..2.0
         pose.tripBreset() # use trip counter/timer B
         state = 15
     elif state==15:
       #edge.lineControl(0.20, 0.5)
       print("crossing cnt: ",edge.crossingLineCnt)
       print("Line cnt: ",edge.lineValidCnt)
-      if edge.crossingLineCnt > 0:
+      if edge.crossingLineCnt > 0: #or pose.tripBtimePassed>2:#needs tuning
         print("Crossed line")
         edge.lineControl(0, 0)
         service.send(service.topicCmd + "ti/rc","-0.1 0.0")
@@ -233,16 +234,18 @@ def loop():
       elif edge.lineValidCnt == 0:
         state = 14
     elif state==16:
-      if pose.tripBtimePassed() > 1:
+      if pose.tripBtimePassed() > 1: #ud på rampen
         service.send(service.topicCmd + "ti/rc","0.1 0.5")
+        pose.tripBreset()
         if pose.tripBh > np.pi/4:# or pose.tripBtimePassed() > 10:
-          service.send(service.topicCmd + "ti/rc","0 0")
-          #edge.lineControl(0.20,0.5) move to ball
-          processed_frame, ball_position = detect_object.process_frame(detect_object.camera_matrix, detect_object.dist_coeffs)
-          print("Ball postion: ",ball_position)
-          detect_object.move_robot_to_target(ball_position[2],ball_position[0])
-          state = 17
-          pose.tripBreset()
+          service.send(service.topicCmd + "ti/rc","0.1 0")
+          if pose.tripBtimePassed > 0.5: #needs tuning
+            #edge.lineControl(0.20,0.5) move to ball
+            processed_frame, ball_position = detect_object.process_frame(detect_object.camera_matrix, detect_object.dist_coeffs,0)
+            print("Ball postion: ",ball_position)
+            detect_object.move_robot_to_target(ball_position[2],ball_position[0]) #find bolden
+            pose.tripBreset()
+            state = 17
       if edge.lineValidCnt == 0 or pose.tripBtimePassed() > 5:
         # no more line
         edge.lineControl(0,0) # stop following line
@@ -255,49 +258,53 @@ def loop():
         print("Arm down")
         service.send(service.topicCmd + "T0/servo","1 -200 200")
         #service.send(service.topicCmd + "T0/servo","1 -10000 200")
-        edge.lineControl(0.18, 0)
+        edge.lineControl(0.18, 0) #ned af rampen
         state = 18
         pose.tripBreset()
     elif state == 18:
-      service.send(service.topicCmd + "T0/servo","1 -10000 200")
-      if edge.crossingLineCnt > 0 or pose.tripBtimePassed() > 3: #needs tunning
+      service.send(service.topicCmd + "T0/servo","1 -10000 200") #find krydset
+      if edge.crossingLineCnt > 0 or pose.tripBtimePassed() > 10: #needs tunning
         edge.lineControl(0,0)
-        pose.tripBreset()
         service.send(service.topicCmd + "ti/rc","-0.01 -0.5")
+        pose.tripBreset()
+        state = 190
+    elif state == 190:
+      if pose.tripBh > np.pi/8 or pose.tripBtimePassed() > 2: 
+        service.send(service.topicCmd + "ti/rc","0.2 0.0")
+        pose.tripBreset()
         state = 19
-
-    elif state == 19: #truning right
-      if pose.tripBh > np.pi/8 or pose.tripBtimePassed() > 2:
+    elif state == 19: #turning right
+      if pose.tripBtimePassed() > 1: 
         service.send(service.topicCmd + "ti/rc", "0.0 0.0")
-        edge.lineControl(0.18,0)
+        edge.lineControl(0.18,0) #finden den store rampe
         pose.tripBreset()
         state = 21
     elif state == 21:
-      if edge.crossingLineCnt > 0 or pose.tripBtimePassed() > 3: #needs tuning
+      if edge.crossingLineCnt > 0 or pose.tripBtimePassed() > 3: 
         edge.lineControl(0,0)
-        service.send(service.topicCmd + "ti/rc","0.2 -0.5") #needs tuning
+        service.send(service.topicCmd + "ti/rc","0.25 -0.5")  #drej mod rampen
         pose.tripBreset()
         state = 22
     elif state == 22:
-      if pose.tripBh > np.pi/2 or pose.tripBtimePassed() > 2: #needs tuning
+      if pose.tripBh > np.pi/2 or pose.tripBtimePassed() > 2: 
         service.send(service.topicCmd + "ti/rc", "0.0 0.0")
-        edge.lineControl(0.20,0)
+        edge.lineControl(0.20,0) #op af rampen
         pose.tripBreset()
         state = 23
     elif state == 23:
-      if pose.tripBtimePassed() > 5: #needs tuning
+      if pose.tripBtimePassed() > 10: 
         edge.lineControl(0,0)
         #if we have a hole detector this is where to put it.
         service.send(service.topicCmd + "T0/servo","1 -900 200")
         print("Arm up")
         #service.send(service.topicCmd + "T0/servo","1 -10000 200")
-        service.send(service.topicCmd + "ti/rc","-0.01 -0.5") #needs tuning
+        service.send(service.topicCmd + "ti/rc","-0.01 -0.5") #needs tuning # vend tilbage.
         pose.tripBreset()
         state = 24
     elif state == 24:
-      if pose.tripBh > np.pi or pose.tripBtimePassed() > 5: #needs tuning
+      if pose.tripBh > np.pi or pose.tripBtimePassed() > 3: #needs tuning
         service.send(service.topicCmd + "ti/rc","0.0 0.0")
-        processed_frame, ball_position = detect_object.process_frame(detect_object.camera_matrix, detect_object.dist_coeffs)
+        processed_frame, ball_position = detect_object.process_frame(detect_object.camera_matrix, detect_object.dist_coeffs,0)
         print("Ball postion: ",ball_position)
         if ball_position != None:
           detect_object.move_robot_to_target(ball_position[2],ball_position[0])
@@ -308,21 +315,70 @@ def loop():
         print("Arm Down!")
         t.sleep(1)
         service.send(service.topicCmd + "T0/servo","1 -10000 200")
-        service.send(service.topicCmd + "ti/rc","-0.01 0.5")
+        service.send(service.topicCmd + "ti/rc","-0.001 0.5")
         pose.tripBreset()
         state = 25
     elif state == 25:
-      if pose.tripBh > np.pi or pose.tripBtimePassed() > 5: #needs tuning
+      if pose.tripBh > np.pi or pose.tripBtimePassed() > 5:
         service.send(service.topicCmd + "ti/rc","0.0 0.0")
         #finde hole again
         #service.send(service.topicCmd + "T0/servo","1 -10000 200")
+        service.send(service.topicCmd + "T0/servo","1 -900 200")
+        print("Arm up")
+        pose.tripBreset()
+        state = 26
+    elif state == 26:
+        if pose.tripBtimePassed() > 2: #needs tuning
+          service.send(service.topicCmd + "T0/servo","1 -10000 200")
+          service.send(service.topicCmd + "ti/rc","-0.25 0.5") #turn towards the staris
+          pose.tripBreset()
+          state = 27
+    elif state == 27:
+        if pose.tripBh > np.pi/2 or pose.tripBtimePassed() > 2:
+          service.send(service.topicCmd + "ti/rc","0.1 0.5") #move forward to the staris
+          pose.tripBreset()
+          state = 28
+    elif state == 28:
+      if pose.tripBtimePassed() > 1:
+        service.send(service.topicCmd + "ti/rc","0.0 0.0")
+        service.send(service.topicCmd + "T0/servo","1 10 0")
+        edge.lineControl(0.17,0)
+        pose.tripBreset()
+        state = 29
+    elif state == 29:
+      print("Crossing lines: ",edge.crossingLineCnt)
+      if pose.tripBtimePassed() > 4: #needs tuning
+        if edge.lineValidCnt == 0:
+          service.send(service.topicCmd + "ti/rc","0.1 0.5")
+        elif pose.tripBtimePassed() > 6 or edge.crossingLineCnt > 0:
+          edge.lineControl(0,0)
+          service.send(service.topicCmd + "ti/rc","-0.01 0.5")
+          pose.tripBreset()
+          state=30
+    elif state == 30:
+      if pose.tripBtimePassed() > 2: #needs tuning
+        service.send(service.topicCmd + "ti/rc","0.0 0.0")
+        edge.lineControl(0.18,0)
+        pose.tripBreset()
+        state = 31
+    elif state == 31:
+      if pose.tripBtimePassed() > 4: #needs tuning
+        if edge.crossingLineCnt > 0:
+          service.send(service.topicCmd + "ti/rc","-0.01 0.5")
+          pose.tripBreset()
+          state = 32
+    elif state == 32:
+      if pose.tripBh > np.pi/2 or pose.tripBtimePassed() > 1: #needs tuning
+        service.send(service.topicCmd + "ti/rc","0.0 0.0")
+        # jónas's 8 tals kode
+        pose.tripBreset()
         state = 99
 
     elif state == 14: # turning left
       if pose.tripBh > np.pi/2 or pose.tripBtimePassed() > 10:
         state = 20 # finished   =17 go look for line
         service.send(service.topicCmd + "ti/rc","0 0") # stop for images
-        processed_frame, ball_position = detect_object.process_frame(detect_object.camera_matrix, detect_object.dist_coeffs)
+        processed_frame, ball_position = detect_object.process_frame(detect_object.camera_matrix, detect_object.dist_coeffs,0)
         print("Ball postion: ",ball_position)
       print(f"% --- state {state}, h = {pose.tripBh:.4f}, t={pose.tripBtimePassed():.3f}")
     elif state == 20: # image analysis
@@ -355,7 +411,7 @@ def loop():
       #Read ir values
       #service.send(service.topicCmd + "T0/sub", "ir 1000")
       hourglass.hourglass()
-      state = 999
+      state = 150
     elif state == 124:
       #ir.print()
       #imu.print()
@@ -363,12 +419,37 @@ def loop():
     elif state == 150:
       circle.circle()
       state = 999
+    elif state == 151: #Test accelerator values state
+      circle.test_acc()
+      state = 999
     elif state == 500:
       ir.print()
       # Calibrate distance sensor
       pass
     elif state ==200:
-      detect_object.test_loop()
+      #detect_object.test_loop()
+      service.send(service.topicCmd + "ti/rc","0.0 0.0")
+      processed_frame, ball_position = detect_object.process_frame(detect_object.camera_matrix, detect_object.dist_coeffs,0)
+      print("Ball postion: ",ball_position)
+      if ball_position != None:
+        detect_object.move_robot_to_target(ball_position[2],ball_position[0])
+      else:
+        print("No Balls!")
+      service.send(service.topicCmd + "T0/servo","1 0 200")
+      print("Arm Down!")
+      #for i in range(-850,-800,10):
+      #  service.send(service.topicCmd + "T0/servo", "1 "+str(i)+" 200")
+      #  t.sleep(0.5)
+      #service.send(service.topicCmd + "T0/servo","1 -1000 200")
+      service.send(service.topicCmd + "T0/servo","1 -1000 200")
+      ##t.sleep(1)
+      ##aruco_navigator.turn(angle=1.57)
+      #t.sleep(1)
+      #service.send(service.topicCmd + "T0/servo","1 -700 200")
+      #t.sleep(1)
+      #service.send(service.topicCmd + "T0/servo","1 -10000 200")
+      #service.send(service.topicCmd + "ti/rc","-0.001 0.5")
+      #aruco_navigator.test_loop()
       state=999
     else: # abort
       print(f"% Mission finished/aborted; state={state}")
