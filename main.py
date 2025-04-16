@@ -429,42 +429,39 @@ def loop():
     elif state ==200: 
       
       service.send(service.topicCmd + "ti/rc", "0.0 0.0")
-      #avg_position=None
-      # ##### once ball is seen tilt only: 
-      # processed_frame, ball_position, _ = detect_object.process_frame(
-      #         detect_object.camera_matrix,
-      #         detect_object.dist_coeffs,
-      #         0)
-      # 
-      # 
-      # detect_object.move_robot_to_target(ball_position[2], ball_position[0], followup=False)
-      # print("First tilt for better average shot")
       
-      #
-      avg_position = detect_object.get_average_ball_position(
-          detect_object.camera_matrix,
-          detect_object.dist_coeffs
-      )
-      
-      if avg_position is not None:
-          # avg_position[3] is robot_coords = [x, y, z, 1], so use [3][2] for Z and [3][0] for X
-          avg_X, avg_Y, avg_Z, robot_coords = avg_position
-          detect_object.move_robot_to_target(avg_Z, avg_X)
-          print("3 images were taken, moving robot to target")
-      else:
-          # If 3 images weren’t captured successfully, take one last shot
-          processed_frame, ball_position, _ = detect_object.process_frame(
+          
+      for i in np.arange(0.15,1,0.25):
+          frame, result, _ = detect_object.process_frame(
               detect_object.camera_matrix,
               detect_object.dist_coeffs,
               object_d=0.043
           )
-          print("Ball position:", ball_position)
-          if ball_position is not None:
-              print("Backup image taken")
-              detect_object.move_robot_to_target(ball_position[2], ball_position[0])
+          if result is not None:
+              X, Y, Z, robot_coords = result
+              detect_object.move_robot_step(Z, X, step_scale=i)
+              print("Adjusting toward ball...")
+              t.sleep(0.1)
+              
+          #if frame is not None:
+          #    cv.imshow("Live Ball Detection", frame)
+          
           else:
-              print("No Balls!")
-              print("Skipping movement due to no detection.")
+              print("Ball not detected this frame.")
+          #if cv.waitKey(1) & 0xFF == ord('q'):
+          #    break
+          #t.sleep(0.2)
+
+      #finally:
+      #  #service.send(service.topicCmd + "T0/servo", "0.0 0.0")
+      #  service.send(service.topicCmd + "T0/servo", "1 0 200") #this is perfect for straight arm
+      #  t.sleep(3)
+      #  service.send(service.topicCmd + "T0/servo", "1 10000 200") #perfect for resting arm
+      #  t.sleep(0.1)
+      #  print("Arm Down!")
+          #cv.destroyAllWindows()
+      
+
       
       service.send(service.topicCmd + "T0/servo", "1 0 200") #this is perfect for straight arm
       t.sleep(1)
@@ -472,25 +469,6 @@ def loop():
       t.sleep(1)
       print("Arm Down!")
       
-      # #Ball is now captured now turn with ball inside
-      # detect_object.turn(angle=1.57)
-      # t.sleep(1)
-      # 
-      # ##### Detect the hole:
-      # avg_position = detect_object.get_average_ball_position(
-      #     detect_object.camera_matrix,
-      #     detect_object.dist_coeffs, object_d=0.052
-      # )
-      # 
-      # if avg_position is not None:
-      #     # avg_position[3] is robot_coords = [x, y, z, 1], so use [3][2] for Z and [3][0] for X
-      #     avg_X, avg_Y, avg_Z, robot_coords = avg_position
-      #     detect_object.move_robot_to_target(avg_Z, avg_X)
-      #     print("3 images were taken, moving robot to target")
-      # t.sleep(3)
-      # #### Lift Arm up for next STATE 
-      # service.send(service.topicCmd + "T0/servo", "1 -1000 200") #perfect for resting arm straight up
-# 
       state=999
       
       
@@ -507,7 +485,7 @@ def loop():
           detect_object.move_robot_to_target(avg_Z, avg_X)
           print("3 images were taken, moving robot to target")
           
-      cv.imshow("Processed Frame", processed_frame)
+      #cv.imshow("Processed Frame", processed_frame)
       state=999
     
     else: # abort
@@ -553,8 +531,9 @@ if __name__ == "__main__":
       setproctitle("mqtt-client")
       print("% Starting")
       # where is the MQTT data server:
-      service.setup('localhost') # localhost
-      #service.setup('10.197.217.81') # Juniper
+      #service.setup('localhost') # localhost
+      
+      service.setup('10.197.216.254') # Cowboy Bebop
       #service.setup('10.197.217.80') # Newton
       #service.setup('bode.local') # Bode
       if service.connected:

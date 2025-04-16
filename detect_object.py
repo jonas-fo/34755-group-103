@@ -132,7 +132,7 @@ def move_robot_to_target(Z,X, stop_distance=0.30, followup=True):
 
 
 def process_frame(camera_matrix, dist_coeffs, object_d):
-    save=True
+    save=False
     """Captures, undistorts, and detects a golf ball."""
     with capture_lock:
         ok, frame, imgTime = cam.getImage()
@@ -220,7 +220,8 @@ def process_frame(camera_matrix, dist_coeffs, object_d):
                 
                 img_name = os.path.join(save_path, f"image_{imgTime.strftime('%Y_%b_%d_%H%M%S_')}.jpg")
                 cv2.imwrite(img_name, undistorted_frame)
-                print(f"% Saved image {img_name}")
+                #cv2.imshow("Saved Image", undistorted_frame)
+                #print(f"% Saved image {img_name}")
             return undistorted_frame, (X_world, Y_world, Z_world, Robot_coor), (x,y)
         
         else:
@@ -256,6 +257,11 @@ def get_average_ball_position(camera_matrix, dist_coeffs, object_d=0.043, num_fr
         print("Failed to get 3 valid readings.")
         return None
 
+def move_robot_step(z, x, step_scale=0.5):
+    # Instead of going full distance, just go a fraction of the way
+    z_step = z * step_scale
+    x_step = x * step_scale
+    move_robot_to_target(z_step, x_step)
 
        
 def turn(angle, turn_speed=0.5): # 90 degrees is 1.57 radians and -90 degrees is -1.57 radians i think 
@@ -314,14 +320,26 @@ if __name__ == "__main__":
     #service.setup('localhost')  # localhost, or whatever server address you need
     service.setup('10.197.216.254')
     if service.connected:
-        # Run the image capture loop in a separate thread
-        image_capture_thread = threading.Thread(target=test_loop, daemon=True)
-        image_capture_thread.start()
-
-        print("System initialized. Running normally...")
-
+        ## Run the image capture loop in a separate thread
+        #image_capture_thread = threading.Thread(target=test_loop, daemon=True)
+        #image_capture_thread.start()
+        #print("System initialized. Running normally...")
         # Run the main loop which will listen for the exit command only
-        test_loop()
+        #test_loop()
+        
+        ############## RUN TO TEST PROCESSFRAME:
+        try:
+            while True:
+                frame, result, _ = process_frame(camera_matrix, dist_coeffs, object_d=0.043)
+
+                if frame is not None:
+                    cv2.imshow("Live Ball Detection", frame)
+
+                if cv2.waitKey(1) & 0xFF == ord('q'):
+                    break  # Press 'q' to exit
+                
+        finally:
+            cv2.destroyAllWindows()
 
         
         
