@@ -9,7 +9,7 @@ from detect_object import process_frame, camera_matrix,dist_coeffs, turn
 
 gyro_value = 25
 acc_value = 0.95
-time_value = 100000 #.001 seconds
+time_value = 200000 #.001 seconds
 amount_of_checks = 1000
 turn_speed = 0.5
 turn_leeway = 50
@@ -19,7 +19,7 @@ image_center = 820/2
 def circle():
     print("starting circle")
     pose.tripBreset()
-    state = 40
+    state = 0
     detect_times = 0
     time_at_detect = datetime.now()
     normal_times=0
@@ -27,16 +27,29 @@ def circle():
     while not service.stop:
         if state == 0:
             print("starting driving")
-            service.send(service.topicCmd + "ti/rc","0.3 0.0")
+            service.send(service.topicCmd + "ti/rc","0.4 0.0")
             state = 10
         
         elif state == 10:
-            print(detect_times)
+            print(imu.gyro[0])
+            if imu.acc[0] < -1: # If the robot stops driving forward, it means that it has run into the gates
+                # If it has run into the gates, back up a bit, then continue.
+
+                service.send(service.topicCmd + "ti/rc","-0.2 0.0")
+                pose.tripBreset()
+                state = 15
             #If using gyro, use gyro_value, if using acc, use acc_value. If mixed, I have forgot to change one of them
-            if abs(imu.gyro[2]) > gyro_value:
+            elif abs(imu.gyro[2]) > gyro_value:
                 time_at_detect = datetime.now()
                 state = 20
                 detect_times += 1
+        elif state == 15:
+            print(pose.tripBh)
+            if pose.tripBtimePassed() >= 1:
+                service.send(service.topicCmd + "ti/rc","0.0 0.0")
+                pose.tripBreset()
+                state = 40
+
 
         elif state == 20:
             print((datetime.now()-time_at_detect).microseconds)
@@ -104,13 +117,13 @@ def circle():
 
         elif state==60:
             turn(angle=1.57)
-            service.send(service.topicCmd + "ti/rc","0.2 0.5")
+            service.send(service.topicCmd + "ti/rc","0.2 0.6 ")
             pose.tripBreset()
             state = 70
         
         elif state==70:
             print(pose.tripBh)
-            if pose.tripBh >= np.pi*2:
+            if pose.tripBh >= np.pi*1.7:
                 pose.tripBreset()
                 state = 80
                 service.send(service.topicCmd + "ti/rc","0.0 0.0")
