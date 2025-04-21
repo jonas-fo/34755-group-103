@@ -292,15 +292,22 @@ def loop():
         pose.tripBreset()
         state = 23
     elif state == 23:
-      if pose.tripBtimePassed() > 10: 
+      if pose.tripBtimePassed() > 10.5: #do sweep to stairs instead
         edge.lineControl(0,0)
-        #if we have a hole detector this is where to put it.
         service.send(service.topicCmd + "T0/servo","1 -900 200")
         print("Arm up")
+        service.send(service.topicCmd + "ti/rc","0.1 -0.5")#needs tuning
+        pose.tripBreset()
+        state = 28
+        """
         #service.send(service.topicCmd + "T0/servo","1 -10000 200")
         service.send(service.topicCmd + "ti/rc","-0.01 -0.5") #needs tuning # vend tilbage.
         pose.tripBreset()
         state = 24
+        """
+
+
+    #depricated    
     elif state == 24:
       if pose.tripBh > np.pi or pose.tripBtimePassed() > 3: #needs tuning
         service.send(service.topicCmd + "ti/rc","0.0 0.0")
@@ -338,8 +345,11 @@ def loop():
           service.send(service.topicCmd + "ti/rc","0.1 0.5") #move forward to the staris
           pose.tripBreset()
           state = 28
+#depricated
+
+
     elif state == 28:
-      if pose.tripBtimePassed() > 1:
+      if pose.tripBtimePassed() > 1: #needs tuning
         service.send(service.topicCmd + "ti/rc","0.0 0.0")
         service.send(service.topicCmd + "T0/servo","1 10 0")
         edge.lineControl(0.17,0)
@@ -356,21 +366,68 @@ def loop():
           pose.tripBreset()
           state=30
     elif state == 30:
-      if pose.tripBtimePassed() > 2: #needs tuning
+      if pose.tripBtimePassed() > 2:
         service.send(service.topicCmd + "ti/rc","0.0 0.0")
-        edge.lineControl(0.18,0)
+        edge.lineControl(0.17,-0.5)
         pose.tripBreset()
         state = 31
     elif state == 31:
-      if pose.tripBtimePassed() > 4: #needs tuning
+      print("lines: ",edge.crossingLineCnt)
+      if pose.tripBtimePassed() > 5: #needs tuning
         if edge.crossingLineCnt > 0:
-          service.send(service.topicCmd + "ti/rc","-0.01 0.5")
+          edge.lineControl(0,0)
+          service.send(service.topicCmd + "ti/rc","-0.01 -0.5")
           pose.tripBreset()
           state = 32
     elif state == 32:
-      if pose.tripBh > np.pi/2 or pose.tripBtimePassed() > 1: #needs tuning
+      if pose.tripBh > np.pi/2 or pose.tripBtimePassed() > 2: #needs tuning
         service.send(service.topicCmd + "ti/rc","0.0 0.0")
+        service.send(service.topicCmd + "T0/servo","1 -300 0")
         # jónas's 8 tals kode
+        pose.tripBreset()
+        state = 33
+    elif state == 33:
+      if pose.tripBtimePassed() > 2: #needs tuning
+        service.send(service.topicCmd + "ti/rc","0.1 0.0")
+        pose.tripBreset()
+        #service.send(service.topicCmd + "T0/servo","1 -10000 0")
+        state = 34
+    elif state == 34:
+      if pose.tripBtimePassed() > 2: #needs tuning
+        service.send(service.topicCmd + "ti/rc","-0.1 0.0")
+        service.send(service.topicCmd + "T0/servo","1 -900 0")
+        pose.tripBreset()
+        state = 35
+    elif state == 35:
+      print("crossing lines: ",edge.crossingLineCnt)
+      if edge.crossingLineCnt > 0 or pose.tripBtimePassed() > 2: #needs tuning
+        service.send(service.topicCmd + "ti/rc","0.0 0.0")
+        service.send(service.topicCmd + "ti/rc","-0.01 0.5") # needs tuning
+        pose.tripBreset()
+        state = 36
+    elif state == 36:
+      if pose.tripBh > np.pi/2 or pose.tripBtimePassed() > 2: #needs tuning
+        service.send(service.topicCmd + "ti/rc","0.0 0.0")
+        service.send(service.topicCmd + "T0/servo","1 -10000 0")
+        edge.lineControl(0.17,0)
+        pose.tripBreset()
+        state = 37
+    elif state == 37:
+      print("crossing lines: ",edge.crossingLineCnt)
+      if edge.crossingLineCnt > 0 or pose.tripBtimePassed() > 5:
+        edge.lineControl(0,0)
+        service.send(service.topicCmd + "ti/rc","0.01 -0.5")
+        pose.tripBreset()
+        state = 38
+    elif state == 38:
+      if pose.tripBh > np.pi/2 or pose.tripBtimePassed() > 2:
+        service.send(service.topicCmd + "ti/rc","0.0 0.0")
+        edge.lineControl(0.1,0)
+        pose.tripBreset()
+        state = 39
+    elif state == 39:
+      if pose.tripBtimePassed() > 2:
+        edge.lineControl(0,0)
         pose.tripBreset()
         state = 99
 
@@ -411,7 +468,7 @@ def loop():
       #Read ir values
       #service.send(service.topicCmd + "T0/sub", "ir 1000")
       hourglass.hourglass()
-      state = 150
+      state = 999
     elif state == 124:
       #ir.print()
       #imu.print()
