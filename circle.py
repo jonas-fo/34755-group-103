@@ -69,7 +69,7 @@ def circle():
                 state = 0
         
         elif state == 40:
-            _,_,coords = process_frame(camera_matrix,dist_coeffs,0.1)
+            _,_,coords,_ = process_frame(camera_matrix,dist_coeffs,0.1)
             if coords is not None:
                 x = coords[0]
             print("Circle", x)
@@ -86,7 +86,7 @@ def circle():
                 #state = 999
         
         elif state == 51:
-            _,_,coords = process_frame(camera_matrix,dist_coeffs,0.1)
+            _,_,coords,_ = process_frame(camera_matrix,dist_coeffs,0.1)
             if coords is not None:
                 x = coords[0]
             print("Circle 51", x)
@@ -94,7 +94,7 @@ def circle():
                 service.send(service.topicCmd + "ti/rc","0.0 0.0")
                 state = 40
         elif state == 52:
-            _,_,coords = process_frame(camera_matrix,dist_coeffs,0.1)
+            _,_,coords,_ = process_frame(camera_matrix,dist_coeffs,0.1)
             if coords is not None:
                 x = coords[0]
             print("Circle 52", x)
