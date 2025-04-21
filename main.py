@@ -26,6 +26,7 @@
 #import sys
 #import threading
 import time as t
+import math
 #import select
 import numpy as np
 import cv2 as cv
@@ -45,6 +46,7 @@ import hourglass
 import detect_object
 import circle
 import aruco_navigator
+from checkhole import get_pitch_from_acc, flat_check, sweep_hole
 
 
 
@@ -238,10 +240,10 @@ def loop():
         service.send(service.topicCmd + "ti/rc","0.1 0.5")
         pose.tripBreset()
         if pose.tripBh > np.pi/4:# or pose.tripBtimePassed() > 10:
-          service.send(service.topicCmd + "ti/rc","0.1 0")
+          service.send(service.topicCmd + "ti/rc","0.1 0.0")
           if pose.tripBtimePassed > 0.5: #needs tuning
             #edge.lineControl(0.20,0.5) move to ball
-            processed_frame, ball_position,_ = detect_object.process_frame(detect_object.camera_matrix, detect_object.dist_coeffs,0)
+            processed_frame, ball_position,_,_ = detect_object.process_frame(detect_object.camera_matrix, detect_object.dist_coeffs,0)
             print("Ball postion: ",ball_position)
             detect_object.move_robot_to_target(ball_position[2],ball_position[0]) #find bolden
             pose.tripBreset()
@@ -311,7 +313,7 @@ def loop():
     elif state == 24:
       if pose.tripBh > np.pi or pose.tripBtimePassed() > 3: #needs tuning
         service.send(service.topicCmd + "ti/rc","0.0 0.0")
-        processed_frame, ball_position, _ = detect_object.process_frame(detect_object.camera_matrix, detect_object.dist_coeffs,0)
+        processed_frame, ball_position, _,_ = detect_object.process_frame(detect_object.camera_matrix, detect_object.dist_coeffs,0)
         print("Ball postion: ",ball_position)
         if ball_position != None:
           detect_object.move_robot_to_target(ball_position[2],ball_position[0])
@@ -434,8 +436,8 @@ def loop():
     elif state == 14: # turning left
       if pose.tripBh > np.pi/2 or pose.tripBtimePassed() > 10:
         state = 20 # finished   =17 go look for line
-        service.send(service.topicCmd + "ti/rc","0 0") # stop for images
-        processed_frame, ball_position,_ = detect_object.process_frame(detect_object.camera_matrix, detect_object.dist_coeffs,0)
+        service.send(service.topicCmd + "ti/rc","0.0 0.0") # stop for images
+        processed_frame, ball_position,_,_ = detect_object.process_frame(detect_object.camera_matrix, detect_object.dist_coeffs,0)
         print("Ball postion: ",ball_position)
       print(f"% --- state {state}, h = {pose.tripBh:.4f}, t={pose.tripBtimePassed():.3f}")
     elif state == 20: # image analysis
@@ -483,67 +485,172 @@ def loop():
       ir.print()
       # Calibrate distance sensor
       pass
+    
+    elif state == 199: ################# AXE GATE
+      
+      #MOVE TO AXE GATE
+      # first get it to 0.3m then activate the axe gate
+      #while ir.ir[1] > 0.4: # while not close enough keep moving
+      #    edge.lineControl(0.3, 0)
+      #        
+      #edge.lineControl(0.0, 0) # when  close enough stop
+      #t.sleep(0.5)
+          
+      
+      ## AXE GATE
+      gate_distance = 0.5
+      # Wait for the axe gate to open (distance > threshold)
+      #while True:
+      #    axe = ir.ir[1]
+      #    print("Waiting for axe gate to open... Current distance:", axe)
+      #    if axe < gate_distance:
+      #        t.sleep(1.85)
+      #        axe1 = ir.ir[1]
+      #        if axe1 < gate_distance:
+      #            print("Axe gate confirmed open.")
+      #            break
+      #    t.sleep(0.1)  # check again soon
+      # ##Now proceed to shoot
+      saw_gate_once = False  # Step 1: wait until we see the axe gate
+
+      while True:
+          axe = ir.ir[1]
+          print("IR distance:", axe)
+
+          if not saw_gate_once:
+              if axe < gate_distance:  # Detected the axe gate
+                  print("Axe gate detected!")
+                  saw_gate_once = True
+          else:
+              if axe > gate_distance:  # Axe gate has passed
+                  print("Axe gate confirmed open. Proceeding.")
+                  break
+      
+          
+      t.sleep(0.05)            
+      edge.lineControl(0.8, 0.0) # stop following line
+      t.sleep(0.15)
+      
+      # DECELERATING
+      for i in np.arange(0.8, 0.25, -0.05): ## suggestion for slowing down with edge control 
+          edge.lineControl(i, 0.0)
+          #service.send(service.topicCmd + "ti/rc", str(i)+"0")
+          t.sleep(0.1)
+          
+      #FIND THE END OF THE LINE    
+      #edge.lineControl(0, 0)
+      while edge.lineValidCnt > 5:
+        edge.lineControl(0.2, 0.0)
+        print("Line valid count: ",edge.lineValidCnt)
+      edge.lineControl(0.0, 0.0)
+      t.sleep(0.1)
+      detect_object.turn(angle=(math.pi/2)) #turn right
+      t.sleep(0.1)
+      distance=0.45
+      speed=0.3
+      timewait=distance/speed
+      
+      service.send(service.topicCmd + "ti/rc", str(speed)+ "0.0")
+      t.sleep(timewait)
+      
+      #state=999
+      state=200
+      
     elif state ==200: 
       
       service.send(service.topicCmd + "ti/rc", "0.0 0.0")
-      
-          
-      for i in np.arange(0.15,1,0.25):
-          frame, result, _ = detect_object.process_frame(
-              detect_object.camera_matrix,
-              detect_object.dist_coeffs,
-              object_d=0.043
-          )
-          if result is not None:
-              X, Y, Z, robot_coords = result
-              detect_object.move_robot_step(Z, X, step_scale=i)
-              print("Adjusting toward ball...")
-              t.sleep(0.1)
-              
-          #if frame is not None:
-          #    cv.imshow("Live Ball Detection", frame)
-          
-          else:
-              print("Ball not detected this frame.")
-          #if cv.waitKey(1) & 0xFF == ord('q'):
-          #    break
-          #t.sleep(0.2)
-
-      #finally:
-      #  #service.send(service.topicCmd + "T0/servo", "0.0 0.0")
-      #  service.send(service.topicCmd + "T0/servo", "1 0 200") #this is perfect for straight arm
-      #  t.sleep(3)
-      #  service.send(service.topicCmd + "T0/servo", "1 10000 200") #perfect for resting arm
-      #  t.sleep(0.1)
-      #  print("Arm Down!")
-          #cv.destroyAllWindows()
-      
+      service.send(service.topicCmd + "T0/servo", "1 -1000 200")
+      t.sleep(0.5)
 
       
-      service.send(service.topicCmd + "T0/servo", "1 0 200") #this is perfect for straight arm
-      t.sleep(1)
-      service.send(service.topicCmd + "T0/servo", "1 10000 200") #perfect for resting arm
+      object_d=0.047 #blue ball
+      
+      aruco_navigator.object_finder(object_d)
+      #for i in np.arange(0,1,0.25):
+      #  processed_frame, ball_position, _,_ = detect_object.process_frame(detect_object.camera_matrix, detect_object.dist_coeffs, object_d=object_d)
+      #  print("Ball postion: ",ball_position)
+      #  if ball_position is not None:
+      #    detect_object.move_robot_step(ball_position[2],ball_position[0], i)
+      #    t.sleep(0.5)
+      #  else:
+      #    print("No Balls!")
+      
+
+
+      service.send(service.topicCmd + "T0/servo", "1 2 200") #this is perfect for straight arm
+      service.send(service.topicCmd + "T0/servo", "1 1 200")
       t.sleep(1)
       print("Arm Down!")
       
-      state=999
+      service.send(service.topicCmd + "T0/servo", "1 10000 200") #perfect for resting arm
+      t.sleep(0.5)
+      state=202
+      #state=999
       
       
     elif state==201:
-      #Search for hole
-      avg_position = detect_object.get_average_ball_position(
-          detect_object.camera_matrix,
-          detect_object.dist_coeffs, object_d=0.052
-      )
+      ##### Hard coded for first hole
+      distance=0.17
+      speed=0.1
+      timewait=distance/speed
+      service.send(service.topicCmd + "ti/rc", str(speed)+ "0.0")
+      t.sleep(timewait)
+      service.send(service.topicCmd + "ti/rc", "0.0 0.0") 
+      #detect_object.turn(angle=-(math.pi/14 )) #turn left
+      sweep_hole()
+      #arm up 
+      service.send(service.topicCmd + "T0/servo", "1 -1000 200") # perfect for resting arm UP
+      t.sleep(1)
       
-      if avg_position is not None:
-          # avg_position[3] is robot_coords = [x, y, z, 1], so use [3][2] for Z and [3][0] for X
-          avg_X, avg_Y, avg_Z, robot_coords = avg_position
-          detect_object.move_robot_to_target(avg_Z, avg_X)
-          print("3 images were taken, moving robot to target")
-          
-      #cv.imshow("Processed Frame", processed_frame)
+      
+      
+      
+      
+        
+        
+      
+      
       state=999
+    
+    elif state==202: ## Aruco FINDERRRRR
+      
+      service.send(service.topicCmd + "T0/servo", "1 2 200") #this is perfect for straight arm
+      service.send(service.topicCmd + "T0/servo", "1 1 200")
+      t.sleep(1)
+      print("Arm Down!")
+      object_d="aruco"
+      
+      id_C=aruco_navigator.object_finder(object_d) # first try will look for 10,11,12,13  
+      if id_C ==10 or id_C == 12 or id_C == 13: 
+        aruco_navigator.object_finder(object_d) # second try will look for 14,15
+      
+      else: #meaning we are at 14 or 15 or NOne
+        pass 
+  
+      service.send(service.topicCmd + "T0/servo", "1 -1000 200") # perfect for resting arm UP
+      t.sleep(1)
+      state=203
+      #state=999
+      
+    elif state == 203: ## Recovery after C quad
+      service.send(service.topicCmd + "ti/rc", "-0.3 0.0")
+      t.sleep(0.5)
+
+      while edge.lineValidCnt < 7:
+        service.send(service.topicCmd + "ti/rc", "-0.3 0.0")
+        t.sleep(0.5)  # Small delay to avoid spamming the command
+
+      # Line is now detected
+      service.send(service.topicCmd + "ti/rc", "0.0 0.0")  # Stop
+      t.sleep(0.5)
+      service.send(service.topicCmd + "ti/rc", "0.0 -1.5")
+      t.sleep(0.5)
+      edge.lineControl(0.2, 0.0)  # Start line following
+    
+      t.sleep(2)
+      edge.lineControl(0.0, 0.0)  # Stop line following
+      state = 999  # Move to the next state
+    
     
     else: # abort
       print(f"% Mission finished/aborted; state={state}")
@@ -571,7 +678,7 @@ def loop():
   service.send(service.topicCmd + "T0/leds","16 0 0 0") 
   gpio.set_value(20, 0)
   edge.lineControl(0,0) # stop following line
-  service.send(service.topicCmd + "ti/rc","0 0")
+  service.send(service.topicCmd + "ti/rc","0.0 0.0")
   t.sleep(0.05)
   pass
 
