@@ -38,11 +38,11 @@ def object_finder(object_d, shots=6):
                 navigate_to_aruco_marker(result[2], rvec, ids)
                 return ids#result, rvec, ids  # Return something consistent
             elif result is None and shot==0: #
-                turn(angle=math.pi/2)
-                print("Taking that 90° right turn")
+                turn(angle=-(math.pi/2))
+                print("Taking that 90° right left")
             else:
-                turn(-angle, turn_speed=1)
-                print("Aruco code not found. Turning left...")
+                turn(angle, turn_speed=1)
+                print("Aruco code not found. Turning right...")
                 time.sleep(0.5)
 
         else:  ############## This is for balls
@@ -54,18 +54,21 @@ def object_finder(object_d, shots=6):
                 object_d=object_d
             )
             time.sleep(0.1)
-            if frame is not None:
-               cv2.imshow("Frame", frame) #you can take this out when you dont need it anymore
-               key = cv2.waitKey(1) & 0xFF
-               if key == 27:  # ESC to exit early
-                   print("ESC pressed. Exiting object_finder.")
-                   break
+
             if result is not None:
-                for i in np.arange(0, 1, 0.25):
-                    X, Y, Z, robot_coords = result
-                    move_robot_step(Z, X, step_scale=i)
-                    print("Adjusting toward ball...")
-                    time.sleep(1)
+                for i in np.arange(0.25, 1, 0.25):
+                    time.sleep(0.5)
+                    frame, result, _,_ = process_frame(
+                        camera_matrix,
+                        dist_coeffs,
+                        object_d=object_d
+                    )
+                    if result is not None:
+                        time.sleep(0.1)
+                        X, Y, Z, robot_coords = result
+                        move_robot_step(Z, X, step_scale=i)
+                        print("Adjusting toward ball...")
+                        time.sleep(1)
                 return result, None, None
             elif result is None and shot == 0:
                 turn(angle=math.pi/2) #turn right first
@@ -77,25 +80,25 @@ def object_finder(object_d, shots=6):
                 #print("check if break breaks the 8 runs or whole thing")
                 #break
         #return result, None, None
-    cv2.destroyAllWindows()
+    
     return None, None, None  # Now correctly placed outside the loop
 
 
 def navigate_to_aruco_marker(Z, rvec, marker_id):
 
     yaw_rad = get_yaw_from_rvec(rvec)
-    threshold_dis=0.30
+    threshold_dis=0.25
+    half_width=0.12
     print(f"[INFO] Marker ID: {marker_id}, Z: {Z:.2f} m, Yaw: {yaw_rad:.2f} rad")
     forward_speed = 0.3  # m/s
      
     motion_plan = {
     10: ["standard_start","turn_right", "move_forward55", "turn_left", "move_forward55", "turn_left"],
-    12: ["standard_start","turn_right", "move_forward30", "turn_left"],
-    13: ["standard_start","turn_right", "move_forward35", "turn_left", "move_forward55", "turn_left"],
+    #13: ["standard_start", "move_forward35", "turn_left"],
+    13: ["standard_start","turn_right", "move_forward30", "turn_left", "move_forward55", "turn_left"],
     14: ["move_to_tarket"],
     15: ["move_to_tarket"],
-    #18: ["move_to_tarket"],
-    
+    18: ["circle_seq"],
     }
 
     actions = motion_plan.get(marker_id, [])
@@ -106,13 +109,13 @@ def navigate_to_aruco_marker(Z, rvec, marker_id):
             print("[Step] Turned 90° right")
             t.sleep(0.5)
         elif action == "move_forward55":
-            move_time = (0.30 + 0.21 +threshold_dis ) / forward_speed
+            move_time = (0.30 + 0.15 + half_width +threshold_dis ) / forward_speed
             service.send(service.topicCmd + "ti/rc", str(forward_speed) + "0.0")
             t.sleep(move_time)
             service.send(service.topicCmd + "ti/rc", "0 0")
             t.sleep(0.5)
         elif action == "move_forward35":
-            move_time = (0.17+threshold_dis) / forward_speed
+            move_time = (0.1+half_width+threshold_dis) / forward_speed
             service.send(service.topicCmd + "ti/rc", str(forward_speed) + "0.0")
             t.sleep(move_time)
             service.send(service.topicCmd + "ti/rc", "0.0 0.0")
@@ -124,11 +127,39 @@ def navigate_to_aruco_marker(Z, rvec, marker_id):
             t.sleep(0.5)
             
         elif action == "move_forward30":
-            move_time = (0.40) / forward_speed
+            move_time = (0.42) / forward_speed
             service.send(service.topicCmd + "ti/rc", str(forward_speed) + "0.0")
             t.sleep(move_time)
             service.send(service.topicCmd + "ti/rc", "0.0 0.0")
             t.sleep(0.5)
+            
+        elif action == "circle_seq":
+            # centering aruco
+            if yaw_rad > 0:
+                turn(angle=-(yaw_rad-math.pi))
+            if yaw_rad < 0:
+                turn(angle=(abs(yaw_rad)-math.pi))
+                
+            
+            
+            #then go Z
+            
+            desired_dis = Z -0.30-threshold_dis
+            move_time = abs(desired_dis) / forward_speed
+            if desired_dis > 0:
+                forward_speed = 0.3
+            else:
+                forward_speed = -0.3
+            service.send(service.topicCmd + "ti/rc", str(forward_speed) +"0.0")
+            t.sleep(move_time)
+            if yaw_rad < 0:
+                turn(angle=math.pi+yaw_rad)
+                
+                
+            if yaw_rad > 0:
+                turn(angle=yaw_rad-math.pi)
+            
+                
         elif action == "move_to_tarket":
             print("YOU ARE HERE!!!!!!!!!!!!!!!!!!!!!!!!!!")
         elif action =="standard_start":

@@ -145,11 +145,11 @@ def process_frame(camera_matrix, dist_coeffs, object_d):
             print("% Failed to get image.")
             return None, None, None, None  # Return None for both
         
-        ###### USE FOR CLEARING IMAGES :Clear existing images in the folder before saving the new one
-        # for file in os.listdir(save_path):
-        #     file_path = os.path.join(save_path, file)
-        #     if os.path.isfile(file_path):
-        #         os.remove(file_path)  # Remove the old image
+        ####### USE FOR CLEARING IMAGES :Clear existing images in the folder before saving the new one
+        #for file in os.listdir(save_path):
+        #    file_path = os.path.join(save_path, file)
+        #    if os.path.isfile(file_path):
+        #        os.remove(file_path)  # Remove the old image
 
         # Undistort the frame
         undistorted_frame = cv2.undistort(frame, camera_matrix, dist_coeffs, None, camera_matrix,)
@@ -166,7 +166,7 @@ def process_frame(camera_matrix, dist_coeffs, object_d):
             mask = cv2.inRange(hsv, lower_orange, upper_orange)
             
         
-        elif object_d == 0.045: ##### Blue ball
+        elif object_d == 0.047: ##### Blue ball
             hsv = cv2.cvtColor(bottom_half, cv2.COLOR_BGR2HSV)
             lower_light_blue = np.array([90, 50, 150])   # Light blue lower bound
             upper_light_blue = np.array([105, 255, 255]) # Light blue upper bound
@@ -182,7 +182,7 @@ def process_frame(camera_matrix, dist_coeffs, object_d):
             corners, ids, _ = cv2.aruco.detectMarkers(gray, ARUCO_DICT, parameters=ARUCO_PARAMS)
         
             time.sleep(0.1) #just a breather for processing
-            valid_ids = [10,12, 13,15] # i removed 12 and 18 and 14
+            valid_ids = [10, 13,15,18] # i removed 12 and 18 and 14
 
             if ids is not None and len(corners) > 0:
                 ids = ids.flatten()
@@ -192,7 +192,7 @@ def process_frame(camera_matrix, dist_coeffs, object_d):
 
                 if intersecting_ids:
                     # Pick the first valid one (or choose based on priority)
-                    chosen_id = intersecting_ids[0]  # Or use sorted() to always pick lowest
+                    chosen_id = sorted(intersecting_ids)[0] #intersecting_ids[0]  # Or use sorted() to always pick lowest
                     index = np.where(ids == chosen_id)[0][0]
                     print("Chosen ArUco ID:", chosen_id)
                     # Estimate pose for all detected markers
@@ -229,31 +229,7 @@ def process_frame(camera_matrix, dist_coeffs, object_d):
             mask2 = cv2.inRange(hsv, lower_red2, upper_red2)
             mask = cv2.bitwise_or(mask1, mask2)
         
-        elif object_d == 0.052: #### Hole
-            hsv_bottom = cv2.cvtColor(bottom_half, cv2.COLOR_BGR2HSV)
-
-            # Define HSV range for light brown (tune if needed)
-            lower_brown = np.array([21, 36, 130])
-            upper_brown = np.array([67, 161, 172])
-
-            
-            mask = cv2.inRange(hsv_bottom, lower_brown, upper_brown)
-
-            # Morphological closing to fill gaps
-            kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (5, 5))
-            mask_closed = cv2.morphologyEx(mask, cv2.MORPH_CLOSE, kernel)
-
-            # Filter image using mask
-            filtered = cv2.bitwise_and(bottom_half, bottom_half, mask=mask_closed)
-
-            # Convert to grayscale and blur
-            gray = cv2.cvtColor(filtered, cv2.COLOR_BGR2GRAY)
-            blurred = cv2.GaussianBlur(gray, (7, 7), 0)
-
-            # Threshold
-            _, thresh = cv2.threshold(blurred, 30, 255, cv2.THRESH_BINARY)
-            thresh=mask
-
+        
 
         
         #else:
@@ -298,7 +274,7 @@ def process_frame(camera_matrix, dist_coeffs, object_d):
 
         
         if cv2.contourArea(c) > 1000:  # Minimum area threshold
-            cv2.drawContours(undistorted_frame, [c], -1, (0, 255, 0), 3)
+            cv2.drawContours(undistorted_frame, [chosen_contour], -1, (0, 255, 0), 3)
 
         if radius > 10:
             x, y, radius = int(x), int(y), int(radius)
@@ -346,11 +322,13 @@ def turn(angle, turn_speed=1): # 90 degrees is 1.57 radians and -90 degrees is -
         time.sleep(turn_time)
         service.send(service.topicCmd + "ti/rc", "0.0 0.0")
         print("Turned right.")
+        time.sleep(0.1)
     elif angle < 0:
         print("Turning left...")
         service.send(service.topicCmd + "ti/rc", "0.0 " + str(turn_speed))
         time.sleep(turn_time)
         service.send(service.topicCmd + "ti/rc", "0.0 0.0")
+        time.sleep(0.1)
         print("Turned left.")
     else:
         print("No turning needed.")
