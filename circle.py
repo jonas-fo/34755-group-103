@@ -16,7 +16,90 @@ turn_leeway = 50
 
 image_center = 820/2
 
+def rotate_towards():
+    print("rotating")
+    x=0
+    state = 40
+    while not service.stop:
+        if state == 40:
+            _,_,coords,_ = process_frame(camera_matrix,dist_coeffs,0.1)
+            if coords is not None:
+                x = coords[0]
+            print("Circle", x)
+            if x < image_center - turn_leeway:
+                service.send(service.topicCmd + "ti/rc","0.0 0.2")
+                state = 51
+                #state = 999
+            elif x > image_center + turn_leeway:
+                service.send(service.topicCmd + "ti/rc","0.0 -0.2")
+                state = 52
+                #state = 999
+            else:
+                state = 60
+                #state = 999
+        elif state == 51:
+            _,_,coords,_ = process_frame(camera_matrix,dist_coeffs,0.1)
+            if coords is not None:
+                x = coords[0]
+            print("Circle 51", x)
+            if x > image_center - turn_leeway:
+                service.send(service.topicCmd + "ti/rc","0.0 0.0")
+                state = 40
+        elif state == 52:
+            _,_,coords,_ = process_frame(camera_matrix,dist_coeffs,0.1)
+            if coords is not None:
+                x = coords[0]
+                print("Circle 52", x)
+                if x < image_center + turn_leeway:
+                    service.send(service.topicCmd + "ti/rc","0.0 0.0")
+                    state = 40
+        else:
+            break
+
+
 def circle():
+    print("starting circle")
+    pose.tripBreset()
+    state = 0
+    while not service.stop:
+        if state == 0:
+            rotate_towards()
+            state = 10
+
+        elif state == 10:
+            print(imu.gyro[0])
+            service.send(service.topicCmd + "ti/rc","0.3 0.0")
+            pose.tripBreset()
+            state = 20
+        elif state == 20:
+            print(imu.gyro[0])
+            if imu.gyro[0] < 10 and pose.tripBtimePassed() >= 3:
+                service.send(service.topicCmd + "ti/rc","-0.3 0.0")
+                state = 30
+                pose.tripBreset()
+        elif state == 30:
+            print(pose.tripBh)
+            if pose.tripBtimePassed() > 0.5:
+                service.send(service.topicCmd + "ti/rc","0.0 0.0")
+                turn(angle=1.4)
+                pose.tripBreset()
+                state = 40
+        elif state == 40:
+            print(pose.tripBh)
+            service.send(service.topicCmd + "ti/rc","0.2 0.6")
+            state = 50
+        elif state == 50:
+            print(pose.tripBh)
+            if pose.tripBh >= np.pi*1.7:
+                service.send(service.topicCmd + "ti/rc","0.0 0.0")
+                state = 60
+
+        
+        else:
+            break
+
+
+def circle_maybe():
     print("starting circle")
     pose.tripBreset()
     state = 0

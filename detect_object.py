@@ -7,18 +7,21 @@ import threading
 import os
 import math
 import time
+from sir import ir
+from sedge import edge
+
 ARUCO_DICT = cv2.aruco.getPredefinedDictionary(cv2.aruco.DICT_4X4_50)
 ARUCO_PARAMS = ARUCO_PARAMS = cv2.aruco.DetectorParameters_create()
 
 #to save image processed: 
 # Create directory if it doesn't exist
-save_path = "C:\\Users\\chris\\Downloads\\svn\\robobot\\mqtt_python\\group_103\\ball_detect_img"
+save_path = "/home/local/svn/robobot/mqtt_python/group_103/ball_detect_img"
 if not os.path.exists(save_path):
     os.makedirs(save_path)
 
 
 # Load calibration data 
-calib_data = np.load("C:\\Users\\chris\\Downloads\\svn\\robobot\\mqtt_python\\group_103\\calibration_data.npz")
+calib_data = np.load("/home/local/svn/robobot/mqtt_python/group_103/calibration_data.npz")
 camera_matrix = calib_data["camera_matrix"]
 dist_coeffs = calib_data["distortion_coeffs"]
 capture_lock = threading.Lock()
@@ -166,7 +169,7 @@ def process_frame(camera_matrix, dist_coeffs, object_d):
             mask = cv2.inRange(hsv, lower_orange, upper_orange)
             
         
-        elif object_d == 0.047: ##### Blue ball
+        elif object_d == 0.045: ##### Blue ball
             hsv = cv2.cvtColor(bottom_half, cv2.COLOR_BGR2HSV)
             lower_light_blue = np.array([90, 50, 150])   # Light blue lower bound
             upper_light_blue = np.array([105, 255, 255]) # Light blue upper bound
@@ -182,7 +185,7 @@ def process_frame(camera_matrix, dist_coeffs, object_d):
             corners, ids, _ = cv2.aruco.detectMarkers(gray, ARUCO_DICT, parameters=ARUCO_PARAMS)
         
             time.sleep(0.1) #just a breather for processing
-            valid_ids = [10, 13,15,18] # i removed 12 and 18 and 14
+            valid_ids = [10, 13,14,15,18] # i removed 12 and 18 and 14
 
             if ids is not None and len(corners) > 0:
                 ids = ids.flatten()
@@ -216,7 +219,7 @@ def process_frame(camera_matrix, dist_coeffs, object_d):
                 return undistorted_frame, None, None, None
     
         elif object_d == 0.1: #### Other object
-            hsv = cv2.cvtColor(bottom_half, cv2.COLOR_BGR2HSV)
+            hsv = cv2.cvtColor(undistorted_frame, cv2.COLOR_BGR2HSV)
 
             lower_red1 = np.array([0, 150, 100])
             upper_red1 = np.array([10, 255, 255])
@@ -248,6 +251,7 @@ def process_frame(camera_matrix, dist_coeffs, object_d):
         valid_contours = []
         for c in contours:
             area = cv2.contourArea(c)
+            print(area)
             if area < 500:  # Reject tiny contours
                 continue
             
@@ -333,6 +337,62 @@ def turn(angle, turn_speed=1): # 90 degrees is 1.57 radians and -90 degrees is -
     else:
         print("No turning needed.")
         
+        
+def axe_sequence():
+    
+    #MOVE TO AXE GATE
+    # first get it to 0.3m then activate the axe gate
+    #while ir.ir[1] > 0.4: # while not close enough keep moving
+    #    edge.lineControl(0.3, 0)
+    #        
+    #edge.lineControl(0.0, 0) # when  close enough stop
+    #t.sleep(0.5)
+        
+    
+    ## AXE GATE
+    gate_distance = 0.5
+    
+    saw_gate_once = False  # Step 1: wait until we see the axe gate
+    while True:
+        axe = ir.ir[1]
+        print("IR distance:", axe)
+        if not saw_gate_once:
+            if axe < gate_distance:  # Detected the axe gate
+                print("Axe gate detected!")
+                saw_gate_once = True
+        else:
+            if axe > gate_distance:  # Axe gate has passed
+                print("Axe gate confirmed open. Proceeding.")
+                break
+    
+        
+    time.sleep(0.05)            
+    edge.lineControl(0.8, 0.0) # stop following line
+    time.sleep(0.15)
+    
+    # DECELERATING
+    for i in np.arange(0.8, 0.25, -0.05): ## suggestion for slowing down with edge control 
+        edge.lineControl(i, 0.0)
+        #service.send(service.topicCmd + "ti/rc", str(i)+"0")
+        time.sleep(0.1)
+        
+    #FIND THE END OF THE LINE    
+    #edge.lineControl(0, 0)
+    while edge.lineValidCnt > 5:
+      edge.lineControl(0.2, 0.0)
+      print("Line valid count: ",edge.lineValidCnt)
+      
+    edge.lineControl(0.0, 0.0)
+    time.sleep(0.1)
+    turn(angle=(math.pi/2)) #turn right
+    time.sleep(0.1)
+    distance=0.52
+    speed=0.3
+    timewait=distance/speed
+    
+    service.send(service.topicCmd + "ti/rc", str(speed)+ "0.0")
+    time.sleep(timewait)        
+     
         
 def test_loop():
     """ Runs the main loop: captures frames, processes them, and detects the golf ball. """

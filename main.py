@@ -46,7 +46,7 @@ import hourglass
 import detect_object
 import circle
 import aruco_navigator
-from checkhole import get_pitch_from_acc, flat_check, sweep_hole
+
 
 
 
@@ -210,7 +210,7 @@ def loop():
         service.send(service.topicCmd + "T0/leds","16 0 0 30") # blue: running
         service.send(service.topicCmd + "ti/rc","0.0 0.0") # (forward m/s, turn-rate rad/sec)
         # follow line (at 0.25cm/s)
-        edge.lineControl(0.20, -0.5) # m/s and position on line -2.0..2.0
+        edge.lineControl(0.25, -1.0) # m/s and position on line -2.0..2.0
         #service.send(service.topicCmd + "T0/servo","1 -200 200")
         #robobot/drive/T0/servo 1 400 200
         state = 12 # until no more line
@@ -219,7 +219,7 @@ def loop():
       #imu.print()
       #imu.decode("")
       print("Line valid count",edge.lineValidCnt)
-      if edge.lineValidCnt == 0 or pose.tripBtimePassed() > 2: #skift time tilbage til 15
+      if edge.lineValidCnt == 0 or pose.tripBtimePassed() > 15: #skift time tilbage til 15
         edge.lineControl(0.17, 0.5) # m/s and position on line -2.0..2.0
         pose.tripBreset() # use trip counter/timer B
         state = 15
@@ -230,49 +230,50 @@ def loop():
       if edge.crossingLineCnt > 0: #or pose.tripBtimePassed>2:#needs tuning
         print("Crossed line")
         edge.lineControl(0, 0)
-        service.send(service.topicCmd + "ti/rc","-0.1 0.0")
+        service.send(service.topicCmd + "ti/rc","0.0 0.0")
         state = 16
         pose.tripBreset()
-      elif edge.lineValidCnt == 0:
-        state = 14
+      #elif edge.lineValidCnt == 0:
+       # state = 14
     elif state==16:
       if pose.tripBtimePassed() > 1: #ud på rampen
-        service.send(service.topicCmd + "ti/rc","0.1 0.5")
-        pose.tripBreset()
-        if pose.tripBh > np.pi/4:# or pose.tripBtimePassed() > 10:
-          service.send(service.topicCmd + "ti/rc","0.1 0.0")
-          if pose.tripBtimePassed > 0.5: #needs tuning
-            #edge.lineControl(0.20,0.5) move to ball
-            processed_frame, ball_position,_,_ = detect_object.process_frame(detect_object.camera_matrix, detect_object.dist_coeffs,0)
-            print("Ball postion: ",ball_position)
-            detect_object.move_robot_to_target(ball_position[2],ball_position[0]) #find bolden
-            pose.tripBreset()
-            state = 17
-      if edge.lineValidCnt == 0 or pose.tripBtimePassed() > 5:
-        # no more line
-        edge.lineControl(0,0) # stop following line
-        pose.tripBreset()
-        #service.send(service.topicCmd + "ti/rc","0.1 0.5") # turn left
-        state = 14 # turn left
+         detect_object.turn(angle=-(math.pi/4))
+         #service.send(service.topicCmd + "ti/rc","0.1 0.0")
+         pose.tripBreset()
+         state = 14
+    elif state == 14:
+      if pose.tripBtimePassed() > 1.2: #needs tuning
+         service.send(service.topicCmd + "ti/rc","0.0 0.0")
+         service.send(service.topicCmd + "T0/servo","1 -200 0")
+         pose.tripBreset()
+         state = 17
+      
     elif state == 17:
       #if pose.tripBtimePassed()>3:
         edge.lineControl(0,0)
-        print("Arm down")
-        service.send(service.topicCmd + "T0/servo","1 -200 200")
+        t.sleep(0.5)
+        service.send(service.topicCmd + "T0/servo", "1 -10000 0") #this is perfect for straight arm
+        #service.send(service.topicCmd + "T0/servo", "1 -1 0")
+        t.sleep(1)
+        print("Arm Down!")
+      
+        #service.send(service.topicCmd + "T0/servo", "1 10000 200") #perfect for resting arm
         #service.send(service.topicCmd + "T0/servo","1 -10000 200")
         edge.lineControl(0.18, 0) #ned af rampen
         state = 18
         pose.tripBreset()
     elif state == 18:
-      service.send(service.topicCmd + "T0/servo","1 -10000 200") #find krydset
-      if edge.crossingLineCnt > 0 or pose.tripBtimePassed() > 10: #needs tunning
+       #find krydset
+      if edge.crossingLineCnt > 0 or pose.tripBtimePassed() > 15: #needs tunning
+        service.send(service.topicCmd + "T0/servo","1 -900 0")
         edge.lineControl(0,0)
         service.send(service.topicCmd + "ti/rc","-0.01 -0.5")
         pose.tripBreset()
         state = 190
     elif state == 190:
-      if pose.tripBh > np.pi/8 or pose.tripBtimePassed() > 2: 
+      if pose.tripBh > np.pi/8 or pose.tripBtimePassed() > 2.2: 
         service.send(service.topicCmd + "ti/rc","0.2 0.0")
+        service.send(service.topicCmd + "T0/servo","1 -10000 0")
         pose.tripBreset()
         state = 19
     elif state == 19: #turning right
@@ -294,75 +295,27 @@ def loop():
         pose.tripBreset()
         state = 23
     elif state == 23:
-      if pose.tripBtimePassed() > 10.5: #do sweep to stairs instead
+      if pose.tripBtimePassed() > 11: #do sweep to stairs instead
         edge.lineControl(0,0)
-        service.send(service.topicCmd + "T0/servo","1 -900 200")
-        print("Arm up")
-        service.send(service.topicCmd + "ti/rc","0.1 -0.5")#needs tuning
+        service.send(service.topicCmd + "T0/servo","1 -200 200")
+        print("Arm down")
+        service.send(service.topicCmd + "ti/rc","0.15 -0.5")#needs tuning
         pose.tripBreset()
         state = 28
-        """
-        #service.send(service.topicCmd + "T0/servo","1 -10000 200")
-        service.send(service.topicCmd + "ti/rc","-0.01 -0.5") #needs tuning # vend tilbage.
-        pose.tripBreset()
-        state = 24
-        """
+        
 
-
-    #depricated    
-    elif state == 24:
-      if pose.tripBh > np.pi or pose.tripBtimePassed() > 3: #needs tuning
-        service.send(service.topicCmd + "ti/rc","0.0 0.0")
-        processed_frame, ball_position, _,_ = detect_object.process_frame(detect_object.camera_matrix, detect_object.dist_coeffs,0)
-        print("Ball postion: ",ball_position)
-        if ball_position != None:
-          detect_object.move_robot_to_target(ball_position[2],ball_position[0])
-        else:
-          print("No Balls!")
-        service.send(service.topicCmd + "T0/servo","1 10 0")
-
-        print("Arm Down!")
-        t.sleep(1)
-        service.send(service.topicCmd + "T0/servo","1 -10000 200")
-        service.send(service.topicCmd + "ti/rc","-0.001 0.5")
-        pose.tripBreset()
-        state = 25
-    elif state == 25:
-      if pose.tripBh > np.pi or pose.tripBtimePassed() > 5:
-        service.send(service.topicCmd + "ti/rc","0.0 0.0")
-        #finde hole again
-        #service.send(service.topicCmd + "T0/servo","1 -10000 200")
-        service.send(service.topicCmd + "T0/servo","1 -900 200")
-        print("Arm up")
-        pose.tripBreset()
-        state = 26
-    elif state == 26:
-        if pose.tripBtimePassed() > 2: #needs tuning
-          service.send(service.topicCmd + "T0/servo","1 -10000 200")
-          service.send(service.topicCmd + "ti/rc","-0.25 0.5") #turn towards the staris
-          pose.tripBreset()
-          state = 27
-    elif state == 27:
-        if pose.tripBh > np.pi/2 or pose.tripBtimePassed() > 2:
-          service.send(service.topicCmd + "ti/rc","0.1 0.5") #move forward to the staris
-          pose.tripBreset()
-          state = 28
-#depricated
 
 
     elif state == 28:
-      if pose.tripBtimePassed() > 1: #needs tuning
+      if pose.tripBtimePassed() > 3.4: #needs tuning
         service.send(service.topicCmd + "ti/rc","0.0 0.0")
-        service.send(service.topicCmd + "T0/servo","1 10 0")
-        edge.lineControl(0.17,0)
+        service.send(service.topicCmd + "T0/servo","1 -10000 200")
+        edge.lineControl(0.2,0)
         pose.tripBreset()
         state = 29
     elif state == 29:
       print("Crossing lines: ",edge.crossingLineCnt)
-      if pose.tripBtimePassed() > 4: #needs tuning
-        if edge.lineValidCnt == 0:
-          service.send(service.topicCmd + "ti/rc","0.1 0.5")
-        elif pose.tripBtimePassed() > 6 or edge.crossingLineCnt > 0:
+      if pose.tripBtimePassed() > 20 or edge.crossingLineCnt > 0:
           edge.lineControl(0,0)
           service.send(service.topicCmd + "ti/rc","-0.01 0.5")
           pose.tripBreset()
@@ -370,7 +323,7 @@ def loop():
     elif state == 30:
       if pose.tripBtimePassed() > 2:
         service.send(service.topicCmd + "ti/rc","0.0 0.0")
-        edge.lineControl(0.17,-0.5)
+        edge.lineControl(0.17,0)
         pose.tripBreset()
         state = 31
     elif state == 31:
@@ -431,7 +384,7 @@ def loop():
       if pose.tripBtimePassed() > 2:
         edge.lineControl(0,0)
         pose.tripBreset()
-        state = 99
+        state = 199
 
     elif state == 14: # turning left
       if pose.tripBh > np.pi/2 or pose.tripBtimePassed() > 10:
@@ -470,7 +423,7 @@ def loop():
       #Read ir values
       #service.send(service.topicCmd + "T0/sub", "ir 1000")
       hourglass.hourglass()
-      state = 999
+      state = 150
     elif state == 124:
       #ir.print()
       #imu.print()
@@ -488,73 +441,9 @@ def loop():
     
     elif state == 199: ################# AXE GATE
       
-      #MOVE TO AXE GATE
-      # first get it to 0.3m then activate the axe gate
-      #while ir.ir[1] > 0.4: # while not close enough keep moving
-      #    edge.lineControl(0.3, 0)
-      #        
-      #edge.lineControl(0.0, 0) # when  close enough stop
-      #t.sleep(0.5)
-          
-      
-      ## AXE GATE
-      gate_distance = 0.5
-      # Wait for the axe gate to open (distance > threshold)
-      #while True:
-      #    axe = ir.ir[1]
-      #    print("Waiting for axe gate to open... Current distance:", axe)
-      #    if axe < gate_distance:
-      #        t.sleep(1.85)
-      #        axe1 = ir.ir[1]
-      #        if axe1 < gate_distance:
-      #            print("Axe gate confirmed open.")
-      #            break
-      #    t.sleep(0.1)  # check again soon
-      # ##Now proceed to shoot
-      saw_gate_once = False  # Step 1: wait until we see the axe gate
-
-      while True:
-          axe = ir.ir[1]
-          print("IR distance:", axe)
-
-          if not saw_gate_once:
-              if axe < gate_distance:  # Detected the axe gate
-                  print("Axe gate detected!")
-                  saw_gate_once = True
-          else:
-              if axe > gate_distance:  # Axe gate has passed
-                  print("Axe gate confirmed open. Proceeding.")
-                  break
-      
-          
-      t.sleep(0.05)            
-      edge.lineControl(0.8, 0.0) # stop following line
-      t.sleep(0.15)
-      
-      # DECELERATING
-      for i in np.arange(0.8, 0.25, -0.05): ## suggestion for slowing down with edge control 
-          edge.lineControl(i, 0.0)
-          #service.send(service.topicCmd + "ti/rc", str(i)+"0")
-          t.sleep(0.1)
-          
-      #FIND THE END OF THE LINE    
-      #edge.lineControl(0, 0)
-      while edge.lineValidCnt > 5:
-        edge.lineControl(0.2, 0.0)
-        print("Line valid count: ",edge.lineValidCnt)
-      edge.lineControl(0.0, 0.0)
-      t.sleep(0.1)
-      detect_object.turn(angle=(math.pi/2)) #turn right
-      t.sleep(0.1)
-      distance=0.45
-      speed=0.3
-      timewait=distance/speed
-      
-      service.send(service.topicCmd + "ti/rc", str(speed)+ "0.0")
-      t.sleep(timewait)
-      
-      #state=999
-      state=200
+      detect_object.axe_sequence()
+      state=999
+      #state=200
       
     elif state ==200: 
       
@@ -563,7 +452,7 @@ def loop():
       t.sleep(0.5)
 
       
-      object_d=0.047 #blue ball
+      object_d=0.045 #blue ball
       
       aruco_navigator.object_finder(object_d)
       #for i in np.arange(0,1,0.25):
@@ -581,36 +470,13 @@ def loop():
       service.send(service.topicCmd + "T0/servo", "1 1 200")
       t.sleep(1)
       print("Arm Down!")
-      
+      detect_object.turn(angle=-(math.pi/2)) #turn left to begin seek 
       service.send(service.topicCmd + "T0/servo", "1 10000 200") #perfect for resting arm
       t.sleep(0.5)
       state=202
       #state=999
+   
       
-      
-    elif state==201:
-      ##### Hard coded for first hole
-      distance=0.17
-      speed=0.1
-      timewait=distance/speed
-      service.send(service.topicCmd + "ti/rc", str(speed)+ "0.0")
-      t.sleep(timewait)
-      service.send(service.topicCmd + "ti/rc", "0.0 0.0") 
-      #detect_object.turn(angle=-(math.pi/14 )) #turn left
-      sweep_hole()
-      #arm up 
-      service.send(service.topicCmd + "T0/servo", "1 -1000 200") # perfect for resting arm UP
-      t.sleep(1)
-      
-      
-      
-      
-      
-        
-        
-      
-      
-      state=999
     
     elif state==202: ## Aruco FINDERRRRR
       
@@ -621,7 +487,7 @@ def loop():
       object_d="aruco"
       
       id_C=aruco_navigator.object_finder(object_d) # first try will look for 10,11,12,13  
-      if id_C ==10 or id_C == 12 or id_C == 13: 
+      if id_C ==10 or id_C == 12 or id_C == 13 or id_C == 18: 
         aruco_navigator.object_finder(object_d) # second try will look for 14,15
       
       else: #meaning we are at 14 or 15 or NOne
@@ -629,8 +495,8 @@ def loop():
   
       service.send(service.topicCmd + "T0/servo", "1 -1000 200") # perfect for resting arm UP
       t.sleep(1)
-      state=203
-      #state=999
+      #state=203
+      state=999
       
     elif state == 203: ## Recovery after C quad
       service.send(service.topicCmd + "ti/rc", "-0.3 0.0")
@@ -651,6 +517,9 @@ def loop():
       edge.lineControl(0.0, 0.0)  # Stop line following
       state = 999  # Move to the next state
     
+    elif state == 204:
+      aruco_navigator.move_in_arc()
+      state=99
     
     else: # abort
       print(f"% Mission finished/aborted; state={state}")

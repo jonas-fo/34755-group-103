@@ -6,6 +6,29 @@ from detect_object import process_frame, turn, move_robot_to_target,move_robot_s
 from uservice import service
 import time as t,time
 
+def move_in_arc(radius=0.55, arc_fraction=0.5, v=0.3, direction="right"):
+    """
+    Moves the robot in a circular arc.
+    
+    send: function to send velocity commands (e.g. send("0.3 -0.3"))
+    radius: radius of the circle (meters)
+    arc_fraction: portion of the full circle to travel (0.5 = half circle)
+    v: linear speed (m/s)
+    direction: "right" (clockwise) or "left" (counterclockwise)
+    """
+    omega = v / radius  # angular speed in rad/s
+    if direction == "right":
+        omega = -omega  # clockwise
+
+    theta = 2 * math.pi * arc_fraction  # radians to travel
+    t_move = abs(theta / omega)  # time in seconds
+
+    # Start motion
+    service.send(service.topicCmd + "ti/rc", str(v) + str(omega))
+    #send(f"{v} {omega}")
+    time.sleep(t_move)
+    service.send(service.topicCmd + "ti/rc", "0.0 0.0")  # Stop
+    return 
 
 def get_yaw_from_rvec(rvec):
     """Convert rotation vector to yaw angle (around Y-axis)."""
@@ -25,6 +48,7 @@ def object_finder(object_d, shots=6):
                 dist_coeffs,
                 object_d="aruco"
             )
+            
             time.sleep(0.1)
             if ids==14 or ids==15:# or ids==18:
                 print("Found Aruco code C (14, 15)")
@@ -33,13 +57,12 @@ def object_finder(object_d, shots=6):
             
                 
                 return  ids#result, rvec, ids
-            if result is not None:
+            
+            if result is not None: 
                 print("Found Aruco code")
                 navigate_to_aruco_marker(result[2], rvec, ids)
                 return ids#result, rvec, ids  # Return something consistent
-            elif result is None and shot==0: #
-                turn(angle=-(math.pi/2))
-                print("Taking that 90° right left")
+
             else:
                 turn(angle, turn_speed=1)
                 print("Aruco code not found. Turning right...")
@@ -87,18 +110,19 @@ def object_finder(object_d, shots=6):
 def navigate_to_aruco_marker(Z, rvec, marker_id):
 
     yaw_rad = get_yaw_from_rvec(rvec)
-    threshold_dis=0.25
+    threshold_dis=0.27
     half_width=0.12
     print(f"[INFO] Marker ID: {marker_id}, Z: {Z:.2f} m, Yaw: {yaw_rad:.2f} rad")
     forward_speed = 0.3  # m/s
      
     motion_plan = {
-    10: ["standard_start","turn_right", "move_forward55", "turn_left", "move_forward55", "turn_left"],
-    #13: ["standard_start", "move_forward35", "turn_left"],
-    13: ["standard_start","turn_right", "move_forward30", "turn_left", "move_forward55", "turn_left"],
+    10: ["standard_start","turn_left","circle arc10"],
+    #10: ["standard_start","turn_right", "move_forward55", "turn_left", "move_forward55", "turn_left"],
+    13: ["standard_start","turn_left","circle arc13"],
+    #13: ["standard_start","turn_right", "move_forward30", "turn_left", "move_forward55", "turn_left"],
     14: ["move_to_tarket"],
     15: ["move_to_tarket"],
-    18: ["circle_seq"],
+    18: ["standard_start","turn_left","circle arc10"],
     }
 
     actions = motion_plan.get(marker_id, [])
@@ -125,6 +149,10 @@ def navigate_to_aruco_marker(Z, rvec, marker_id):
             turn(angle=-1.3)
             print("[Step] Turned 90° left")
             t.sleep(0.5)
+        elif action == "turn_10_left":
+            turn(angle=-0.5)
+            print("[Step] Turned 10° left")
+            t.sleep(0.5)
             
         elif action == "move_forward30":
             move_time = (0.42) / forward_speed
@@ -134,16 +162,9 @@ def navigate_to_aruco_marker(Z, rvec, marker_id):
             t.sleep(0.5)
             
         elif action == "circle_seq":
-            # centering aruco
-            if yaw_rad > 0:
-                turn(angle=-(yaw_rad-math.pi))
-            if yaw_rad < 0:
-                turn(angle=(abs(yaw_rad)-math.pi))
-                
-            
-            
-            #then go Z
-            
+            ratio=abs(math.pi+yaw_rad)/Z
+            time.sleep(0.1) #just a breather for processing
+            print(f"ratio: {ratio}")
             desired_dis = Z -0.30-threshold_dis
             move_time = abs(desired_dis) / forward_speed
             if desired_dis > 0:
@@ -152,14 +173,27 @@ def navigate_to_aruco_marker(Z, rvec, marker_id):
                 forward_speed = -0.3
             service.send(service.topicCmd + "ti/rc", str(forward_speed) +"0.0")
             t.sleep(move_time)
-            if yaw_rad < 0:
+            service.send(service.topicCmd + "ti/rc", "0.0 0.0")
+            if yaw_rad < 0 and ratio>0.88:
                 turn(angle=math.pi+yaw_rad)
                 
                 
             if yaw_rad > 0:
                 turn(angle=yaw_rad-math.pi)
             
-                
+            
+        elif action == "circle arc13":
+            
+            print("circle arc for 133333")
+            move_in_arc(radius=0.70, arc_fraction=0.5, v=0.3, direction="right")
+            t.sleep(0.1)
+            
+        elif action == "circle arc10":
+            print("circle arc for 10")
+            move_in_arc(radius=0.70, arc_fraction=0.52, v=0.3, direction="right")
+            t.sleep(0.1)
+            
+                    
         elif action == "move_to_tarket":
             print("YOU ARE HERE!!!!!!!!!!!!!!!!!!!!!!!!!!")
         elif action =="standard_start":
