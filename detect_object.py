@@ -80,7 +80,7 @@ def pixel_to_world(x, y, camera_matrix, radius, object_d):
 
     return X, Y, Z, R
 
-def move_robot_to_target(Z,X, stop_distance=0.20, followup=True):
+def move_robot_to_target(Z,X, stop_distance=0.30, followup=True):
     
     ###########Method 1 for arriving at ball ###################
     forward_speed=0.15 # m/s
@@ -185,7 +185,7 @@ def process_frame(camera_matrix, dist_coeffs, object_d):
             corners, ids, _ = cv2.aruco.detectMarkers(gray, ARUCO_DICT, parameters=ARUCO_PARAMS)
         
             time.sleep(0.1) #just a breather for processing
-            valid_ids = [10, 13,14,15,18] # i removed 12 and 18 and 14
+            valid_ids = [10, 13,14,15] # i removed 12 and 18 and 14
 
             if ids is not None and len(corners) > 0:
                 ids = ids.flatten()
@@ -217,6 +217,42 @@ def process_frame(camera_matrix, dist_coeffs, object_d):
             else:
                 print("No ArUco marker detected.")
                 return undistorted_frame, None, None, None
+            
+        elif object_d == "aruco_END": #doesnt need pixel to world conversion
+            #mask = None
+            gray = cv2.cvtColor(undistorted_frame, cv2.COLOR_BGR2GRAY)
+            corners, ids, _ = cv2.aruco.detectMarkers(gray, ARUCO_DICT, parameters=ARUCO_PARAMS)
+        
+            time.sleep(0.1) #just a breather for processing
+            valid_ids = [25] # i removed 12 and 18 and 14
+
+            if ids is not None and len(corners) > 0:
+                ids = ids.flatten()
+
+                # Check if any valid ID is present
+                intersecting_ids = [id for id in ids if id in valid_ids]
+
+                if intersecting_ids:
+                    # Pick the first valid one (or choose based on priority)
+                    chosen_id = sorted(intersecting_ids)[0] #intersecting_ids[0]  # Or use sorted() to always pick lowest
+                    index = np.where(ids == chosen_id)[0][0]
+                    print("Chosen ArUco ID:", chosen_id)
+                    # Estimate pose for all detected markers
+                    rvecs, tvecs, _ = cv2.aruco.estimatePoseSingleMarkers(
+                        corners, 0.1, camera_matrix, dist_coeffs
+                    )
+
+                    tvec = tvecs[index][0]
+                    rvec = rvecs[index][0]
+
+                    # Draw only the chosen marker
+                    cv2.aruco.drawDetectedMarkers(undistorted_frame, [corners[index]], np.array([[ids[index]]], dtype=np.int32))
+                    cv2.drawFrameAxes(undistorted_frame, camera_matrix, dist_coeffs, rvec, tvec, 0.03)
+
+                    X_world, Y_world, Z_world = tvec[0], tvec[1], tvec[2]
+                    Robot_coor = None
+
+                    return undistorted_frame, (X_world, Y_world, Z_world, Robot_coor), rvec, chosen_id
     
         elif object_d == 0.1: #### Other object
             hsv = cv2.cvtColor(undistorted_frame, cv2.COLOR_BGR2HSV)
@@ -371,10 +407,10 @@ def axe_sequence():
     time.sleep(0.15)
     
     # DECELERATING
-    for i in np.arange(0.8, 0.25, -0.05): ## suggestion for slowing down with edge control 
+    for i in np.arange(0.5, 0.2, -0.1): ## suggestion for slowing down with edge control 
         edge.lineControl(i, 0.0)
         #service.send(service.topicCmd + "ti/rc", str(i)+"0")
-        time.sleep(0.1)
+        time.sleep(0.5)
         
     #FIND THE END OF THE LINE    
     #edge.lineControl(0, 0)
@@ -382,11 +418,13 @@ def axe_sequence():
       edge.lineControl(0.2, 0.0)
       print("Line valid count: ",edge.lineValidCnt)
       
+      
     edge.lineControl(0.0, 0.0)
     time.sleep(0.1)
     turn(angle=(math.pi/2)) #turn right
     time.sleep(0.1)
-    distance=0.52
+    
+    distance=0.60 #change as you see fit
     speed=0.3
     timewait=distance/speed
     

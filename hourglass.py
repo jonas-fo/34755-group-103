@@ -47,7 +47,7 @@ def hourglass():
             if pose.tripBh > np.pi/4:
                 service.send(service.topicCmd + "ti/rc","0.0 0.0") # (forward m/s, turn-rate rad/sec)
                 hourglass_state = 3
-                edge.lineControl(0.15, 1.0) # m/s and position on line -2.0..2.0
+                edge.lineControl(0.15, 1.3) # m/s and position on line -2.0..2.0
         elif hourglass_state == 3:
             print(pose.tripBh)
             if pose.tripBh <= desired_stop_heading:# or ir.ir[0] < distance_to_gate:

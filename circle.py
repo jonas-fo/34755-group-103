@@ -7,7 +7,7 @@ import numpy as np
 from datetime import *
 from detect_object import process_frame, camera_matrix,dist_coeffs, turn
 
-gyro_value = 25
+gyro_value = 10
 acc_value = 0.95
 time_value = 200000 #.001 seconds
 amount_of_checks = 1000
@@ -73,7 +73,7 @@ def circle():
             state = 20
         elif state == 20:
             print(imu.gyro[0])
-            if imu.gyro[0] < 10 and pose.tripBtimePassed() >= 3:
+            if abs(imu.gyro[0]) > gyro_value and pose.tripBtimePassed() >= 3:
                 service.send(service.topicCmd + "ti/rc","-0.3 0.0")
                 state = 30
                 pose.tripBreset()
@@ -90,7 +90,7 @@ def circle():
             state = 50
         elif state == 50:
             print(pose.tripBh)
-            if pose.tripBh >= np.pi*1.7:
+            if pose.tripBh >= np.pi*1.8:
                 service.send(service.topicCmd + "ti/rc","0.0 0.0")
                 state = 60
 
@@ -217,11 +217,12 @@ def circle_maybe():
             break
 
 def test_acc():
+    service.send(service.topicCmd + "ti/rc","0.3 0.0")
     pose.tripBreset()
     state = 0
     while not service.stop:
         if state == 0:
-            print(imu.acc[2])
+            print(imu.gyro[0])
 
 
 def circle_old():

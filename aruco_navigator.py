@@ -38,7 +38,7 @@ def get_yaw_from_rvec(rvec):
 
 
 def object_finder(object_d, shots=6):
-    angle = math.pi / (shots)  # angle in radians per shot
+    angle = (3*math.pi/4) / (shots)  # 135 degrees with 6 shots = 22.5 degrees
     for shot in range(shots):
         time.sleep(0.5)
 
@@ -50,10 +50,10 @@ def object_finder(object_d, shots=6):
             )
             
             time.sleep(0.1)
-            if ids==14 or ids==15:# or ids==18:
+            if ids==14 or ids==15:# or ids==18: 14 might be best test
                 print("Found Aruco code C (14, 15)")
                 move_robot_to_target(result[2], result[0],followup=False)
-                move_robot_step((result[2]-0.01), result[0]-result[0], step_scale=0.7)
+                move_robot_step((result[2]-0.01), 0.0, step_scale=0.80)
             
                 
                 return  ids#result, rvec, ids
@@ -79,7 +79,7 @@ def object_finder(object_d, shots=6):
             time.sleep(0.1)
 
             if result is not None:
-                for i in np.arange(0.25, 1, 0.25):
+                for i in np.linspace(0.25, 1.0, 4):
                     time.sleep(0.5)
                     frame, result, _,_ = process_frame(
                         camera_matrix,
@@ -110,7 +110,7 @@ def object_finder(object_d, shots=6):
 def navigate_to_aruco_marker(Z, rvec, marker_id):
 
     yaw_rad = get_yaw_from_rvec(rvec)
-    threshold_dis=0.27
+    threshold_dis=0.30
     half_width=0.12
     print(f"[INFO] Marker ID: {marker_id}, Z: {Z:.2f} m, Yaw: {yaw_rad:.2f} rad")
     forward_speed = 0.3  # m/s
@@ -122,7 +122,7 @@ def navigate_to_aruco_marker(Z, rvec, marker_id):
     #13: ["standard_start","turn_right", "move_forward30", "turn_left", "move_forward55", "turn_left"],
     14: ["move_to_tarket"],
     15: ["move_to_tarket"],
-    18: ["standard_start","turn_left","circle arc10"],
+    #18: ["standard_start","turn_left","circle arc10"],
     }
 
     actions = motion_plan.get(marker_id, [])

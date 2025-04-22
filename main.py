@@ -42,7 +42,7 @@ from scam import cam
 from uservice import service
 from simu import imu
 #import Seesaw
-import hourglass
+from hourglass import hourglass
 import detect_object
 import circle
 import aruco_navigator
@@ -383,6 +383,7 @@ def loop():
     elif state == 39:
       if pose.tripBtimePassed() > 2:
         edge.lineControl(0,0)
+        service.send(service.topicCmd + "ti/rc","0.0 0.0")
         pose.tripBreset()
         state = 199
 
@@ -422,7 +423,7 @@ def loop():
     elif state == 123:
       #Read ir values
       #service.send(service.topicCmd + "T0/sub", "ir 1000")
-      hourglass.hourglass()
+      hourglass()
       state = 150
     elif state == 124:
       #ir.print()
@@ -473,8 +474,8 @@ def loop():
       detect_object.turn(angle=-(math.pi/2)) #turn left to begin seek 
       service.send(service.topicCmd + "T0/servo", "1 10000 200") #perfect for resting arm
       t.sleep(0.5)
-      state=202
-      #state=999
+      #state=202
+      state=999
    
       
     
@@ -517,8 +518,12 @@ def loop():
       edge.lineControl(0.0, 0.0)  # Stop line following
       state = 999  # Move to the next state
     
-    elif state == 204:
-      aruco_navigator.move_in_arc()
+    elif state == 204: # THE FINAL COUNTDOWN
+      object_d="aruco_END"
+      =detect_object.process_frame(detect_object.camera_matrix, detect_object.dist_coeffs, object_d=object_d)
+      
+      
+      
       state=99
     
     else: # abort
