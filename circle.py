@@ -60,41 +60,64 @@ def rotate_towards():
 def circle():
     print("starting circle")
     pose.tripBreset()
-    state = 0
+    state = 5
     while not service.stop:
         if state == 0:
-            rotate_towards()
-            state = 10
+            service.send(service.topicCmd + "ti/rc","0.4 0.0")
+            state = 5
+        elif state == 5:
+            if pose.tripBtimePassed() > 0.4:
+                rotate_towards()
+                state = 10
 
         elif state == 10:
             print(imu.gyro[0])
-            service.send(service.topicCmd + "ti/rc","0.3 0.0")
+            service.send(service.topicCmd + "ti/rc","0.4 0.0")
             pose.tripBreset()
             state = 20
         elif state == 20:
             print(imu.gyro[0])
-            if abs(imu.gyro[0]) > gyro_value and pose.tripBtimePassed() >= 3:
+            if abs(imu.gyro[0]) > gyro_value and pose.tripBtimePassed() >= 2:
                 service.send(service.topicCmd + "ti/rc","-0.3 0.0")
                 state = 30
                 pose.tripBreset()
         elif state == 30:
             print(pose.tripBh)
-            if pose.tripBtimePassed() > 0.5:
+            if pose.tripBtimePassed() > 0.2:
                 service.send(service.topicCmd + "ti/rc","0.0 0.0")
+                rotate_towards()
                 turn(angle=1.4)
                 pose.tripBreset()
                 state = 40
         elif state == 40:
             print(pose.tripBh)
-            service.send(service.topicCmd + "ti/rc","0.2 0.6")
+            service.send(service.topicCmd + "ti/rc","0.25 0.6")
             state = 50
         elif state == 50:
             print(pose.tripBh)
             if pose.tripBh >= np.pi*1.8:
-                service.send(service.topicCmd + "ti/rc","0.0 0.0")
+                service.send(service.topicCmd + "ti/rc","0.4 0.0")
                 state = 60
-
-        
+                pose.tripBreset()
+        elif state == 60:
+            print(abs(imu.gyro[0]))
+            if abs(imu.gyro[0]) > gyro_value and pose.tripBtimePassed() >= 2:
+                service.send(service.topicCmd + "ti/rc","-0.3 0.0")
+                state = 70
+                pose.tripBreset()
+        elif state == 70:
+            print(pose.tripBtimePassed)
+            if pose.tripBtimePassed() >= 0.2:
+                service.send(service.topicCmd + "ti/rc","0.0 0.0")
+                turn(angle=1.35)
+                service.send(service.topicCmd + "ti/rc","0.4 0.0")
+                state = 80
+        elif state == 80:
+            print(edge.crossingLineCnt)
+            if edge.lineValidCnt > 0:
+                service.send(service.topicCmd + "ti/rc","0.0 0.0")
+                turn(angle=1.35)
+                state = 90
         else:
             break
 

@@ -200,6 +200,8 @@ def loop():
     state=500
   elif not service.args.now:
     print("% Ready, press start button")
+    while(not gpio.get_value(19)):
+      pass
   # main state machine
   edge.lineControl(0, 0) # make sure line control is off
   while not (service.stop):
@@ -210,7 +212,7 @@ def loop():
         service.send(service.topicCmd + "T0/leds","16 0 0 30") # blue: running
         service.send(service.topicCmd + "ti/rc","0.0 0.0") # (forward m/s, turn-rate rad/sec)
         # follow line (at 0.25cm/s)
-        edge.lineControl(0.25, -1.0) # m/s and position on line -2.0..2.0
+        edge.lineControl(0.15, -1.0) # m/s and position on line -2.0..2.0
         #service.send(service.topicCmd + "T0/servo","1 -200 200")
         #robobot/drive/T0/servo 1 400 200
         state = 12 # until no more line
@@ -219,7 +221,7 @@ def loop():
       #imu.print()
       #imu.decode("")
       print("Line valid count",edge.lineValidCnt)
-      if edge.lineValidCnt == 0 or pose.tripBtimePassed() > 15: #skift time tilbage til 15
+      if pose.tripBtimePassed() > 20:#edge.lineValidCnt == 0 or pose.tripBtimePassed() > 25: #skift time tilbage til 15
         edge.lineControl(0.17, 0.5) # m/s and position on line -2.0..2.0
         pose.tripBreset() # use trip counter/timer B
         state = 15
@@ -431,10 +433,13 @@ def loop():
       state = 999
     elif state == 150:
       circle.circle()
-      state = 999
-    elif state == 151: #Test accelerator values state
-      circle.test_acc()
-      state = 999
+      edge.lineControl(0.3,-0.5)
+      pose.tripBreset()
+      state = 151
+    elif state == 151:
+      if pose.tripBtimePassed() > 3:
+        edge.lineControl(0.0,0.0)
+        state = 204
     elif state == 500:
       ir.print()
       # Calibrate distance sensor
@@ -443,8 +448,8 @@ def loop():
     elif state == 199: ################# AXE GATE
       
       detect_object.axe_sequence()
-      state=999
-      #state=200
+      #state=999
+      state=200
       
     elif state ==200: 
       
@@ -453,36 +458,28 @@ def loop():
       t.sleep(0.5)
 
       
-      object_d=0.045 #blue ball
+      object_d=0.046 #blue ball
       
       aruco_navigator.object_finder(object_d)
-      #for i in np.arange(0,1,0.25):
-      #  processed_frame, ball_position, _,_ = detect_object.process_frame(detect_object.camera_matrix, detect_object.dist_coeffs, object_d=object_d)
-      #  print("Ball postion: ",ball_position)
-      #  if ball_position is not None:
-      #    detect_object.move_robot_step(ball_position[2],ball_position[0], i)
-      #    t.sleep(0.5)
-      #  else:
-      #    print("No Balls!")
       
 
 
       service.send(service.topicCmd + "T0/servo", "1 2 200") #this is perfect for straight arm
-      service.send(service.topicCmd + "T0/servo", "1 1 200")
+      service.send(service.topicCmd + "T0/servo", "1 100 200")
       t.sleep(1)
       print("Arm Down!")
-      detect_object.turn(angle=-(math.pi/2)) #turn left to begin seek 
+      detect_object.turn(angle=-(math.pi/3)) #turn left to begin seek 
       service.send(service.topicCmd + "T0/servo", "1 10000 200") #perfect for resting arm
       t.sleep(0.5)
-      #state=202
-      state=999
+      state=202
+      #state=999
    
       
     
     elif state==202: ## Aruco FINDERRRRR
       
-      service.send(service.topicCmd + "T0/servo", "1 2 200") #this is perfect for straight arm
-      service.send(service.topicCmd + "T0/servo", "1 1 200")
+      service.send(service.topicCmd + "T0/servo", "1 99 200") #this is perfect for straight arm
+      service.send(service.topicCmd + "T0/servo", "1 100 200")
       t.sleep(1)
       print("Arm Down!")
       object_d="aruco"
@@ -500,31 +497,72 @@ def loop():
       state=999
       
     elif state == 203: ## Recovery after C quad
-      service.send(service.topicCmd + "ti/rc", "-0.3 0.0")
+      #service.send(service.topicCmd + "ti/rc", "-0.3 0.0")
+      #t.sleep(0.5)
+#
+      #while edge.lineValidCnt < 7:
+      #  service.send(service.topicCmd + "ti/rc", "-0.3 0.0")
+      #  t.sleep(0.5)  # Small delay to avoid spamming the command
+#
+      ## Line is now detected
+      #service.send(service.topicCmd + "ti/rc", "0.0 0.0")  # Stop
+      #t.sleep(0.5)
+      #service.send(service.topicCmd + "ti/rc", "0.0 -1.5")
+      #t.sleep(0.5)
+      #edge.lineControl(0.2, 0.0)  # Start line following
+    #
+      #t.sleep(2)
+      #edge.lineControl(0.0, 0.0)  # Stop line following
+      
+      service.send(service.topicCmd + "ti/rc", "-0.15 0.0")
       t.sleep(0.5)
 
       while edge.lineValidCnt < 7:
-        service.send(service.topicCmd + "ti/rc", "-0.3 0.0")
-        t.sleep(0.5)  # Small delay to avoid spamming the command
+        service.send(service.topicCmd + "ti/rc", "-0.15 0.0")
+        t.sleep(0.1)  # Small delay to avoid spamming the command
 
       # Line is now detected
       service.send(service.topicCmd + "ti/rc", "0.0 0.0")  # Stop
       t.sleep(0.5)
-      service.send(service.topicCmd + "ti/rc", "0.0 -1.5")
+      detect_object.turn(-(math.pi)/3) #turn left 
       t.sleep(0.5)
-      edge.lineControl(0.2, 0.0)  # Start line following
+      edge.lineControl(0.15, 0.0)
+      t.sleep(7)
+      state = 204 # Move to the next state
+    elif state == 204: #turning left
+      if edge.crossingLineCnt>0:
+        
+        edge.lineControl(0,0)
+        service.send(service.topicCmd + "ti/rc", "0.0 0.0")  # double stop
+        t.sleep(0.5)
+        detect_object.turn(angle=-(1.52)) #turn left
+        t.sleep(0.5)
+        service.send(service.topicCmd + "ti/rc", "0.2 0.0")  # double stop
+        t.sleep(0.5)
+        service.send(service.topicCmd + "ti/rc", "0.0 0.0")  # double stop
+
+        state = 123  # Move to the next state
     
-      t.sleep(2)
-      edge.lineControl(0.0, 0.0)  # Stop line following
-      state = 999  # Move to the next state
-    
-    elif state == 204: # THE FINAL COUNTDOWN
+    elif state == 205: # THE FINAL COUNTDOWN
       object_d="aruco_END"
-      =detect_object.process_frame(detect_object.camera_matrix, detect_object.dist_coeffs, object_d=object_d)
+      for i in np.linspace(0, 0.8, 3):
+        _, result,_, _=detect_object.process_frame(detect_object.camera_matrix, detect_object.dist_coeffs, object_d=object_d)
+
+        if result is not None:
+          detect_object.move_robot_to_target(result[2],result[0], followup=False)
+          detect_object.move_robot_step(result[2],0, 0.8)
+        else:
+          print("NOT ALIGNED WIth aruco 25, Make sure previous state aligns with it")
+          
+      state = 999
+          
+          
+        
       
       
       
-      state=99
+      
+      state=999
     
     else: # abort
       print(f"% Mission finished/aborted; state={state}")
@@ -569,9 +607,9 @@ if __name__ == "__main__":
       setproctitle("mqtt-client")
       print("% Starting")
       # where is the MQTT data server:
-      #service.setup('localhost') # localhost
+      service.setup('localhost') # localhost
       
-      service.setup('10.197.216.254') # Cowboy Bebop
+      #service.setup('10.197.216.254') # Cowboy Bebop
       #service.setup('10.197.217.80') # Newton
       #service.setup('bode.local') # Bode
       if service.connected:

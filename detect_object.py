@@ -120,9 +120,10 @@ def move_robot_to_target(Z,X, stop_distance=0.30, followup=True):
         if distance <= 0:
             print("Already close enough to the target. OR too close CHECK")
             return
-        if distance > 0.9:
-            print("THis is way too Far perform SOME LOGIC HERE")
-            return
+        #if distance > 0.9:
+        #    
+        #    print("THis is way too Far perform SOME LOGIC HERE")
+        #    return
         else:
             move_time=distance/forward_speed
 
@@ -169,7 +170,7 @@ def process_frame(camera_matrix, dist_coeffs, object_d):
             mask = cv2.inRange(hsv, lower_orange, upper_orange)
             
         
-        elif object_d == 0.045: ##### Blue ball
+        elif object_d == 0.046: ##### Blue ball
             hsv = cv2.cvtColor(bottom_half, cv2.COLOR_BGR2HSV)
             lower_light_blue = np.array([90, 50, 150])   # Light blue lower bound
             upper_light_blue = np.array([105, 255, 255]) # Light blue upper bound
@@ -185,7 +186,7 @@ def process_frame(camera_matrix, dist_coeffs, object_d):
             corners, ids, _ = cv2.aruco.detectMarkers(gray, ARUCO_DICT, parameters=ARUCO_PARAMS)
         
             time.sleep(0.1) #just a breather for processing
-            valid_ids = [10, 13,14,15] # i removed 12 and 18 and 14
+            valid_ids = [10, 12,13,14,15] # i removed 12 and 18 and 14
 
             if ids is not None and len(corners) > 0:
                 ids = ids.flatten()
@@ -308,13 +309,17 @@ def process_frame(camera_matrix, dist_coeffs, object_d):
         # Sort valid contours by how low (y) they are in the frame (prioritize closer ones)
         valid_contours = sorted(valid_contours, key=lambda c: cv2.minEnclosingCircle(c)[0][1], reverse=True)
         chosen_contour = valid_contours[0]
+        # Shift the chosen_contour vertically by y_split before drawing
+        chosen_contour_shifted = chosen_contour.copy()
+        chosen_contour_shifted[:, 0, 1] += y_split  # Shift y-coordinates
+        
 
         (x, y), radius = cv2.minEnclosingCircle(chosen_contour)
         y += y_split  # Adjust Y to match full frame
 
         
         if cv2.contourArea(c) > 1000:  # Minimum area threshold
-            cv2.drawContours(undistorted_frame, [chosen_contour], -1, (0, 255, 0), 3)
+            cv2.drawContours(undistorted_frame, [chosen_contour_shifted], -1, (0, 255, 0), 3)
 
         if radius > 10:
             x, y, radius = int(x), int(y), int(radius)
@@ -329,7 +334,7 @@ def process_frame(camera_matrix, dist_coeffs, object_d):
                 # Saving the image with a timestamped filename
                 
                 img_name = os.path.join(save_path, f"image_{imgTime.strftime('%Y_%b_%d_%H%M%S_')}.jpg")
-                cv2.imwrite(img_name, undistorted_frame)
+                cv2.imwrite(img_name, mask)
                 #cv2.imshow("Saved Image", undistorted_frame)
                 #print(f"% Saved image {img_name}")
             return undistorted_frame, (X_world, Y_world, Z_world, Robot_coor), (x,y), None
@@ -415,8 +420,10 @@ def axe_sequence():
     #FIND THE END OF THE LINE    
     #edge.lineControl(0, 0)
     while edge.lineValidCnt > 5:
-      edge.lineControl(0.2, 0.0)
-      print("Line valid count: ",edge.lineValidCnt)
+        print("Line valid count: ",edge.high)
+        print("Line thress: ",edge.lineValidThreshold)
+        edge.lineControl(0.15, 0.0)
+        print("Line valid count: ",edge.lineValidCnt)
       
       
     edge.lineControl(0.0, 0.0)
@@ -424,7 +431,7 @@ def axe_sequence():
     turn(angle=(math.pi/2)) #turn right
     time.sleep(0.1)
     
-    distance=0.60 #change as you see fit
+    distance=0.680 #change as you see fit
     speed=0.3
     timewait=distance/speed
     
@@ -465,7 +472,7 @@ if __name__ == "__main__":
     
     # Setup service (assuming you have already set up the service in your script)
     #service.setup('localhost')  # localhost, or whatever server address you need
-    service.setup('10.197.216.254')
+    #service.setup('10.197.216.254')
     if service.connected:
         ## Run the image capture loop in a separate thread
         #image_capture_thread = threading.Thread(target=test_loop, daemon=True)

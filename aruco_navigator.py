@@ -51,16 +51,24 @@ def object_finder(object_d, shots=6):
             
             time.sleep(0.1)
             if ids==14 or ids==15:# or ids==18: 14 might be best test
-                print("Found Aruco code C (14, 15)")
-                move_robot_to_target(result[2], result[0],followup=False)
-                move_robot_step((result[2]-0.01), 0.0, step_scale=0.80)
+                if ids==14: #offest more to the right 
+                    print("Found Aruco code 14 try right offset") 
+                    move_robot_to_target(result[2], result[0],followup=False)
+                    turn(angle=0.08) #offest right
+                    move_robot_step((result[2]-0.15), 0.0, step_scale=0.95)
+                    
+                if ids==15: #offest more to the left
+                    print("Found Aruco code 15 try left offset") 
+                    move_robot_to_target(result[2], result[0],followup=False)
+                    turn(angle=-0.08) #offest left
+                    move_robot_step((result[2]-0.15), 0.0, step_scale=0.95)
             
                 
                 return  ids#result, rvec, ids
             
             if result is not None: 
                 print("Found Aruco code")
-                navigate_to_aruco_marker(result[2], rvec, ids)
+                navigate_to_aruco_marker(result[2], rvec, ids, result[0])
                 return ids#result, rvec, ids  # Return something consistent
 
             else:
@@ -94,8 +102,8 @@ def object_finder(object_d, shots=6):
                         time.sleep(1)
                 return result, None, None
             elif result is None and shot == 0:
-                turn(angle=math.pi/2) #turn right first
-                print(" Taking that 90° right turn")
+                turn(angle=math.pi/3) #turn right first
+                print(" Taking that 60° right turn")
             else:
                 turn(-angle)
                 print("Ball not detected this frame. Turning left...")
@@ -107,10 +115,10 @@ def object_finder(object_d, shots=6):
     return None, None, None  # Now correctly placed outside the loop
 
 
-def navigate_to_aruco_marker(Z, rvec, marker_id):
+def navigate_to_aruco_marker(Z, rvec, marker_id, X):
 
     yaw_rad = get_yaw_from_rvec(rvec)
-    threshold_dis=0.30
+    threshold_dis=0.27
     half_width=0.12
     print(f"[INFO] Marker ID: {marker_id}, Z: {Z:.2f} m, Yaw: {yaw_rad:.2f} rad")
     forward_speed = 0.3  # m/s
@@ -120,6 +128,7 @@ def navigate_to_aruco_marker(Z, rvec, marker_id):
     #10: ["standard_start","turn_right", "move_forward55", "turn_left", "move_forward55", "turn_left"],
     13: ["standard_start","turn_left","circle arc13"],
     #13: ["standard_start","turn_right", "move_forward30", "turn_left", "move_forward55", "turn_left"],
+    12: ["circle arc12"],
     14: ["move_to_tarket"],
     15: ["move_to_tarket"],
     #18: ["standard_start","turn_left","circle arc10"],
@@ -132,60 +141,54 @@ def navigate_to_aruco_marker(Z, rvec, marker_id):
             turn(angle=1.2)
             print("[Step] Turned 90° right")
             t.sleep(0.5)
-        elif action == "move_forward55":
-            move_time = (0.30 + 0.15 + half_width +threshold_dis ) / forward_speed
-            service.send(service.topicCmd + "ti/rc", str(forward_speed) + "0.0")
-            t.sleep(move_time)
-            service.send(service.topicCmd + "ti/rc", "0 0")
-            t.sleep(0.5)
-        elif action == "move_forward35":
-            move_time = (0.1+half_width+threshold_dis) / forward_speed
-            service.send(service.topicCmd + "ti/rc", str(forward_speed) + "0.0")
-            t.sleep(move_time)
-            service.send(service.topicCmd + "ti/rc", "0.0 0.0")
-            t.sleep(0.5)
             
         elif action == "turn_left":
             turn(angle=-1.3)
             print("[Step] Turned 90° left")
             t.sleep(0.5)
-        elif action == "turn_10_left":
-            turn(angle=-0.5)
-            print("[Step] Turned 10° left")
-            t.sleep(0.5)
             
-        elif action == "move_forward30":
-            move_time = (0.42) / forward_speed
-            service.send(service.topicCmd + "ti/rc", str(forward_speed) + "0.0")
+        elif action == "circle arc12":
+            
+            ######first move closer to the marker
+            move_robot_to_target(Z, X, followup=False)
+            Z = Z - (threshold_dis+half_width)
+            move_robot_to_target(Z, 0)
+            
+            
+            
+             # Step 2: Sidestep to align with marker
+            side_d = Z * math.sin(yaw_rad)
+            t.sleep(0.1) #just a breather for processing
+            if yaw_rad<0:
+                side_angle = 3.14-1.55-abs(yaw_rad)#math.pi - (math.pi / 2) - yaw_rad  # = pi/2 - yaw_rad
+            if yaw_rad>0:
+                side_angle = abs(3.14-1.55-yaw_rad)
+            print(f"[STEP 1] Turn by {math.degrees(side_angle):.2f}°, then move {side_d:.2f} m sideways")
+            
+            turn(side_angle)
+
+            # Here you would insert your robot's actual movement code, e.g.:
+            forward_speed = 0.3  # m/s
+            move_time=abs(side_d)/forward_speed
+            print(f"Moving forward for {move_time:.2f} seconds...")
+            service.send(service.topicCmd + "ti/rc", str(forward_speed)+"0.0")
             t.sleep(move_time)
             service.send(service.topicCmd + "ti/rc", "0.0 0.0")
-            t.sleep(0.5)
+            print("Arrived at target.")
+
             
-        elif action == "circle_seq":
-            ratio=abs(math.pi+yaw_rad)/Z
-            time.sleep(0.1) #just a breather for processing
-            print(f"ratio: {ratio}")
-            desired_dis = Z -0.30-threshold_dis
-            move_time = abs(desired_dis) / forward_speed
-            if desired_dis > 0:
-                forward_speed = 0.3
-            else:
-                forward_speed = -0.3
-            service.send(service.topicCmd + "ti/rc", str(forward_speed) +"0.0")
-            t.sleep(move_time)
-            service.send(service.topicCmd + "ti/rc", "0.0 0.0")
-            if yaw_rad < 0 and ratio>0.88:
-                turn(angle=math.pi+yaw_rad)
-                
-                
-            if yaw_rad > 0:
-                turn(angle=yaw_rad-math.pi)
+        
             
+            print("circle arc for 12")
+            move_in_arc(radius=0.70, arc_fraction=0.1, v=0.3, direction="left")
+            t.sleep(0.1)
+            # turn 145 to comensate
+            turn(angle=-1.55) 
             
         elif action == "circle arc13":
             
             print("circle arc for 133333")
-            move_in_arc(radius=0.70, arc_fraction=0.5, v=0.3, direction="right")
+            move_in_arc(radius=0.70, arc_fraction=0.45, v=0.3, direction="right")
             t.sleep(0.1)
             
         elif action == "circle arc10":
