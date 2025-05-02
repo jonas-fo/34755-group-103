@@ -186,7 +186,7 @@ def process_frame(camera_matrix, dist_coeffs, object_d):
             corners, ids, _ = cv2.aruco.detectMarkers(gray, ARUCO_DICT, parameters=ARUCO_PARAMS)
         
             time.sleep(0.1) #just a breather for processing
-            valid_ids = [10, 12,13,14,15] # i removed 12 and 18 and 14
+            valid_ids = [10,12,13,14,15] # i removed 12 and 18 and 14
 
             if ids is not None and len(corners) > 0:
                 ids = ids.flatten()
@@ -381,22 +381,13 @@ def turn(angle, turn_speed=1): # 90 degrees is 1.57 radians and -90 degrees is -
         
 def axe_sequence():
     
-    #MOVE TO AXE GATE
-    # first get it to 0.3m then activate the axe gate
-    #while ir.ir[1] > 0.4: # while not close enough keep moving
-    #    edge.lineControl(0.3, 0)
-    #        
-    #edge.lineControl(0.0, 0) # when  close enough stop
-    #t.sleep(0.5)
-        
-    
     ## AXE GATE
     gate_distance = 0.5
     
     saw_gate_once = False  # Step 1: wait until we see the axe gate
     while True:
         axe = ir.ir[1]
-        print("IR distance:", axe)
+        #print("IR distance:", axe)
         if not saw_gate_once:
             if axe < gate_distance:  # Detected the axe gate
                 print("Axe gate detected!")
@@ -431,7 +422,7 @@ def axe_sequence():
     turn(angle=(math.pi/2)) #turn right
     time.sleep(0.1)
     
-    distance=0.680 #change as you see fit
+    distance=0.60 #change as you see fit
     speed=0.3
     timewait=distance/speed
     

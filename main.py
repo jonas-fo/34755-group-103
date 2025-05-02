@@ -296,7 +296,7 @@ def loop():
         edge.lineControl(0.20,0) #op af rampen
         pose.tripBreset()
         state = 23
-    elif state == 23:
+    elif state == 23: 
       if pose.tripBtimePassed() > 11: #do sweep to stairs instead
         edge.lineControl(0,0)
         service.send(service.topicCmd + "T0/servo","1 -200 200")
@@ -325,17 +325,38 @@ def loop():
     elif state == 30:
       if pose.tripBtimePassed() > 2:
         service.send(service.topicCmd + "ti/rc","0.0 0.0")
-        edge.lineControl(0.17,0)
+        #edge.lineControl(0.17,0)
+        dis=1.2
+        s=0.17
+        ti=dis/s
+        edge.lineControl(s,0)
+        t.sleep(ti)
+        print("TRAVELLLLLLLLLLLLLLLED", dis)
+        edge.lineControl(0.12,0)
         pose.tripBreset()
         state = 31
     elif state == 31:
-      print("lines: ",edge.crossingLineCnt)
-      if pose.tripBtimePassed() > 5: #needs tuning
-        if edge.crossingLineCnt > 0:
-          edge.lineControl(0,0)
-          service.send(service.topicCmd + "ti/rc","-0.01 -0.5")
-          pose.tripBreset()
-          state = 32
+      #print("lines: ",edge.crossingLineCnt)
+      #if pose.tripBtimePassed() > 5: #needs tuning
+      #  edge.crossingLineCnt
+      t.sleep(0.1)
+      #print("WHATTTTTTTTTTTTT IS VA>LEEE: ",edge.crossingLineCnt)
+
+      if edge.crossingLineCnt > 0:
+        edge.lineControl(0,0)
+        service.send(service.topicCmd + "ti/rc","-0.01 -0.5")
+        pose.tripBreset()
+        state = 32
+      
+    
+      
+      
+
+
+            
+          
+          
+          
     elif state == 32:
       if pose.tripBh > np.pi/2 or pose.tripBtimePassed() > 2: #needs tuning
         service.send(service.topicCmd + "ti/rc","0.0 0.0")
@@ -366,12 +387,12 @@ def loop():
       if pose.tripBh > np.pi/2 or pose.tripBtimePassed() > 2: #needs tuning
         service.send(service.topicCmd + "ti/rc","0.0 0.0")
         service.send(service.topicCmd + "T0/servo","1 -10000 0")
-        edge.lineControl(0.17,0)
+        edge.lineControl(0.15,0)
         pose.tripBreset()
         state = 37
     elif state == 37:
       print("crossing lines: ",edge.crossingLineCnt)
-      if edge.crossingLineCnt > 0 or pose.tripBtimePassed() > 5:
+      if edge.crossingLineCnt > 0: #or pose.tripBtimePassed() > 5:
         edge.lineControl(0,0)
         service.send(service.topicCmd + "ti/rc","0.01 -0.5")
         pose.tripBreset()
@@ -448,8 +469,8 @@ def loop():
     elif state == 199: ################# AXE GATE
       
       detect_object.axe_sequence()
-      #state=999
-      state=200
+      state=999
+      #state=200
       
     elif state ==200: 
       
@@ -469,19 +490,19 @@ def loop():
       t.sleep(1)
       print("Arm Down!")
       detect_object.turn(angle=-(math.pi/3)) #turn left to begin seek 
-      service.send(service.topicCmd + "T0/servo", "1 10000 200") #perfect for resting arm
-      t.sleep(0.5)
-      state=202
-      #state=999
+      #service.send(service.topicCmd + "T0/servo", "1 10000 200") #perfect for resting arm
+      #t.sleep(0.5)
+      #state=202
+      state=999
    
       
     
     elif state==202: ## Aruco FINDERRRRR
       
-      service.send(service.topicCmd + "T0/servo", "1 99 200") #this is perfect for straight arm
-      service.send(service.topicCmd + "T0/servo", "1 100 200")
-      t.sleep(1)
-      print("Arm Down!")
+      #service.send(service.topicCmd + "T0/servo", "1 99 200") #this is perfect for straight arm
+      #service.send(service.topicCmd + "T0/servo", "1 100 200")
+      #t.sleep(1)
+      #print("Arm Down!")
       object_d="aruco"
       
       id_C=aruco_navigator.object_finder(object_d) # first try will look for 10,11,12,13  
@@ -497,22 +518,6 @@ def loop():
       state=999
       
     elif state == 203: ## Recovery after C quad
-      #service.send(service.topicCmd + "ti/rc", "-0.3 0.0")
-      #t.sleep(0.5)
-#
-      #while edge.lineValidCnt < 7:
-      #  service.send(service.topicCmd + "ti/rc", "-0.3 0.0")
-      #  t.sleep(0.5)  # Small delay to avoid spamming the command
-#
-      ## Line is now detected
-      #service.send(service.topicCmd + "ti/rc", "0.0 0.0")  # Stop
-      #t.sleep(0.5)
-      #service.send(service.topicCmd + "ti/rc", "0.0 -1.5")
-      #t.sleep(0.5)
-      #edge.lineControl(0.2, 0.0)  # Start line following
-    #
-      #t.sleep(2)
-      #edge.lineControl(0.0, 0.0)  # Stop line following
       
       service.send(service.topicCmd + "ti/rc", "-0.15 0.0")
       t.sleep(0.5)

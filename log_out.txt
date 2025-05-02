@@ -1,5 +1,22 @@
-% mqtt-client is already running - terminating
-%   if it is partially crashed in the background, then try:
-%     pkill mqtt-client
-%   or, if that fails use the most brutal kill
-%     pkill -9 mqtt-client
+% Starting
+% ConnectedOut to MQTT Broker localhost on 1883
+% Connected to MQTT Broker localhost on 1883
+% Robot (srobot.py) got no HBT data after 31 loops (stops).
+% Is teensy_interface running?
+% Service - thread stopped
+% Service - thread stopped
+% Camera thread stopped
+% Edge (sedge.py):: turns on line sensor
+% (uservice.py) Setup finished with connected=True
+Initial state =  123
+% shutting down
+% Pose terminated
+% Robot terminated
+% Pose terminated
+% IR terminated
+% Edge (sedge.py):: turn off line sensor
+% Edge (sedge.py):: terminated
+% Camera terminated
+% GPIO terminated
+% logfile closed
+% Main Terminated

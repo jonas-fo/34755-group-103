@@ -46,7 +46,7 @@ class SEdge:
     edgeIntervalSetup = 0.1
     # line detection levels
     lineValidThreshold = 800 # 1000 is calibrated white
-    crossingThreshold = 800 # average above this is assumed to be crossing line
+    crossingThreshold = 750 # average above this is assumed to be crossing line
     # level for relevant white values
     low = lineValidThreshold - 100;
     # line detection values

@@ -53,15 +53,15 @@ def object_finder(object_d, shots=6):
             if ids==14 or ids==15:# or ids==18: 14 might be best test
                 if ids==14: #offest more to the right 
                     print("Found Aruco code 14 try right offset") 
-                    move_robot_to_target(result[2], result[0],followup=False)
-                    turn(angle=0.08) #offest right
-                    move_robot_step((result[2]-0.15), 0.0, step_scale=0.95)
+                    move_robot_to_target(result[2], result[0]+0.10,followup=False)
+                    #turn(angle=0.1) #offest right
+                    move_robot_step((result[2]), 0.0, step_scale=0.85)
                     
                 if ids==15: #offest more to the left
                     print("Found Aruco code 15 try left offset") 
                     move_robot_to_target(result[2], result[0],followup=False)
                     turn(angle=-0.08) #offest left
-                    move_robot_step((result[2]-0.15), 0.0, step_scale=0.95)
+                    move_robot_step((result[2]), 0.0, step_scale=0.95)
             
                 
                 return  ids#result, rvec, ids
@@ -149,41 +149,20 @@ def navigate_to_aruco_marker(Z, rvec, marker_id, X):
             
         elif action == "circle arc12":
             
-            ######first move closer to the marker
-            move_robot_to_target(Z, X, followup=False)
-            Z = Z - (threshold_dis+half_width)
-            move_robot_to_target(Z, 0)
             
-            
-            
-             # Step 2: Sidestep to align with marker
-            side_d = Z * math.sin(yaw_rad)
-            t.sleep(0.1) #just a breather for processing
-            if yaw_rad<0:
-                side_angle = 3.14-1.55-abs(yaw_rad)#math.pi - (math.pi / 2) - yaw_rad  # = pi/2 - yaw_rad
-            if yaw_rad>0:
-                side_angle = abs(3.14-1.55-yaw_rad)
-            print(f"[STEP 1] Turn by {math.degrees(side_angle):.2f}°, then move {side_d:.2f} m sideways")
-            
-            turn(side_angle)
-
-            # Here you would insert your robot's actual movement code, e.g.:
-            forward_speed = 0.3  # m/s
-            move_time=abs(side_d)/forward_speed
-            print(f"Moving forward for {move_time:.2f} seconds...")
-            service.send(service.topicCmd + "ti/rc", str(forward_speed)+"0.0")
-            t.sleep(move_time)
-            service.send(service.topicCmd + "ti/rc", "0.0 0.0")
-            print("Arrived at target.")
 
             
+            move_robot_to_target(Z, X-0.30)
+            
+            #align with aruco code:
+            #turn(yaw_rad-(3.4))
         
             
+            
             print("circle arc for 12")
-            move_in_arc(radius=0.70, arc_fraction=0.1, v=0.3, direction="left")
+            move_in_arc(radius=0.70, arc_fraction=0.45, v=0.3, direction="right")
             t.sleep(0.1)
             # turn 145 to comensate
-            turn(angle=-1.55) 
             
         elif action == "circle arc13":
             
