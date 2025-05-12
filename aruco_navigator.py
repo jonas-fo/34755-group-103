@@ -61,7 +61,7 @@ def object_finder(object_d, shots=6):
                     print("Found Aruco code 15 try left offset") 
                     move_robot_to_target(result[2], result[0],followup=False)
                     turn(angle=-0.08) #offest left
-                    move_robot_step((result[2]), 0.0, step_scale=0.95)
+                    move_robot_step((result[2]), 0.0, step_scale=0.88)
             
                 
                 return  ids#result, rvec, ids
@@ -118,7 +118,7 @@ def object_finder(object_d, shots=6):
 def navigate_to_aruco_marker(Z, rvec, marker_id, X):
 
     yaw_rad = get_yaw_from_rvec(rvec)
-    threshold_dis=0.27
+    threshold_dis=0.26
     half_width=0.12
     print(f"[INFO] Marker ID: {marker_id}, Z: {Z:.2f} m, Yaw: {yaw_rad:.2f} rad")
     forward_speed = 0.3  # m/s

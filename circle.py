@@ -77,7 +77,7 @@ def circle():
             state = 20
         elif state == 20:
             print(imu.gyro[0])
-            if abs(imu.gyro[0]) > gyro_value and pose.tripBtimePassed() >= 2:
+            if abs(imu.gyro[0]) > gyro_value and pose.tripBtimePassed() >= 2.8:
                 service.send(service.topicCmd + "ti/rc","-0.3 0.0")
                 state = 30
                 pose.tripBreset()
@@ -91,7 +91,7 @@ def circle():
                 state = 40
         elif state == 40:
             print(pose.tripBh)
-            service.send(service.topicCmd + "ti/rc","0.25 0.6")
+            service.send(service.topicCmd + "ti/rc","0.2 0.65")
             state = 50
         elif state == 50:
             print(pose.tripBh)
@@ -109,7 +109,7 @@ def circle():
             print(pose.tripBtimePassed)
             if pose.tripBtimePassed() >= 0.2:
                 service.send(service.topicCmd + "ti/rc","0.0 0.0")
-                turn(angle=1.35)
+                turn(angle=1.3)
                 service.send(service.topicCmd + "ti/rc","0.4 0.0")
                 state = 80
         elif state == 80:

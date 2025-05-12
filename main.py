@@ -65,8 +65,8 @@ def imageAnalysis(save):
         pass
       edge.paint(img)
       
-      if not gpio.onPi:
-        cv.imshow('frame for analysis', img)
+      #if not gpio.onPi:
+      #  cv.imshow('frame for analysis', img)
       if save:
         fn = f"image_{imgTime.strftime('%Y_%b_%d_%H%M%S_')}{cam.cnt:03d}.jpg"
         cv.imwrite(fn, img)
@@ -311,6 +311,7 @@ def loop():
     elif state == 28:
       if pose.tripBtimePassed() > 3.4: #needs tuning
         service.send(service.topicCmd + "ti/rc","0.0 0.0")
+        service.send(service.topicCmd + "T0/servo","1 -9000 200")
         service.send(service.topicCmd + "T0/servo","1 -10000 200")
         edge.lineControl(0.2,0)
         pose.tripBreset()
@@ -350,12 +351,6 @@ def loop():
       
     
       
-      
-
-
-            
-          
-          
           
     elif state == 32:
       if pose.tripBh > np.pi/2 or pose.tripBtimePassed() > 2: #needs tuning
@@ -469,8 +464,8 @@ def loop():
     elif state == 199: ################# AXE GATE
       
       detect_object.axe_sequence()
-      state=999
-      #state=200
+      #state=999
+      state=200
       
     elif state ==200: 
       
@@ -490,8 +485,8 @@ def loop():
       t.sleep(1)
       print("Arm Down!")
       detect_object.turn(angle=-(math.pi/3)) #turn left to begin seek 
-      #service.send(service.topicCmd + "T0/servo", "1 10000 200") #perfect for resting arm
-      #t.sleep(0.5)
+      service.send(service.topicCmd + "T0/servo", "1 10000 200") #perfect for resting arm
+      t.sleep(0.5)
       #state=202
       state=999
    
@@ -612,9 +607,9 @@ if __name__ == "__main__":
       setproctitle("mqtt-client")
       print("% Starting")
       # where is the MQTT data server:
-      service.setup('localhost') # localhost
+      #service.setup('localhost') # localhost
       
-      #service.setup('10.197.216.254') # Cowboy Bebop
+      service.setup('10.197.216.254') # Cowboy Bebop
       #service.setup('10.197.217.80') # Newton
       #service.setup('bode.local') # Bode
       if service.connected:

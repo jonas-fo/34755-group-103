@@ -140,7 +140,7 @@ def move_robot_to_target(Z,X, stop_distance=0.30, followup=True):
     
 
 def process_frame(camera_matrix, dist_coeffs, object_d): 
-    save=True
+    save=False
     mask=None
     """Captures, undistorts, and detects a golf ball."""
     with capture_lock:
@@ -150,10 +150,10 @@ def process_frame(camera_matrix, dist_coeffs, object_d):
             return None, None, None, None  # Return None for both
         
         ####### USE FOR CLEARING IMAGES :Clear existing images in the folder before saving the new one
-        #for file in os.listdir(save_path):
-        #    file_path = os.path.join(save_path, file)
-        #    if os.path.isfile(file_path):
-        #        os.remove(file_path)  # Remove the old image
+        for file in os.listdir(save_path):
+            file_path = os.path.join(save_path, file)
+            if os.path.isfile(file_path):
+                os.remove(file_path)  # Remove the old image
 
         # Undistort the frame
         undistorted_frame = cv2.undistort(frame, camera_matrix, dist_coeffs, None, camera_matrix,)
@@ -387,7 +387,8 @@ def axe_sequence():
     saw_gate_once = False  # Step 1: wait until we see the axe gate
     while True:
         axe = ir.ir[1]
-        #print("IR distance:", axe)
+        time.sleep(0.1)
+        print("IR distance:", axe)
         if not saw_gate_once:
             if axe < gate_distance:  # Detected the axe gate
                 print("Axe gate detected!")
